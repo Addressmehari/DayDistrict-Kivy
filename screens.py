@@ -3,7 +3,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.animation import Animation
 from kivy.clock import Clock
-from kivy.properties import StringProperty, ListProperty
+from kivy.properties import StringProperty, ListProperty, NumericProperty
 from kivy.app import App
 from kivy.uix.modalview import ModalView
 from kivy.uix.label import Label
@@ -24,11 +24,19 @@ class WindowManager(ScreenManager):
 
 class HomeDashboard(Screen):
     date_display = StringProperty("")
+    heatmap_year = NumericProperty(datetime.now().year)
     
     def on_enter(self, *args):
         self.date_display = datetime.now().strftime("%A, %d %B")
+        # Ensure year is set
+        if self.heatmap_year == 0:
+            self.heatmap_year = datetime.now().year
         # Schedule update to ensure KV ids are populated
         Clock.schedule_once(lambda dt: self.update_view(), 0)
+
+    def change_heatmap_year(self, offset):
+        self.heatmap_year += offset
+        self.update_view()
 
     def update_view(self):
         # 1. Fetch Data
@@ -121,15 +129,9 @@ class HomeDashboard(Screen):
         # Grid Container
         grid_box = BoxLayout(orientation='horizontal', spacing=4, size_hint_x=None)
         
-        today = datetime.now().date()
-        # Strictly start from Jan 1st of CURRENT YEAR (or specific year if desired, e.g. 2026)
-        current_year = today.year
+        # Use Dynamic Year
+        current_year = self.heatmap_year
         start_date = datetime(current_year, 1, 1).date()
-        
-        # We need to render from Jan 1st until at least today, or full year?
-        # Let's render Full Year (or until today + some buffer).
-        # GitHub usually shows fixed 52 weeks or full calendar year.
-        # Let's show full year 2026.
         end_date = datetime(current_year, 12, 31).date()
         
         # Calculate how many weeks roughly needed.
@@ -320,9 +322,15 @@ class DayPage(Screen):
         self.name = date_str
         self.date_str = date_str
         self.questions = []
-        Clock.schedule_once(self.populate_grid)
+        Clock.schedule_once(self.populate_grid, 0)
 
     def populate_grid(self, dt):
+        if 'grid_layout' not in self.ids:
+            # KV rule might not have applied yet?
+            # Or ids not populated. Retry.
+            Clock.schedule_once(self.populate_grid, 0.05)
+            return
+
         self.questions = dm.load_questions_for_date(self.date_str)
         saved_data = dm.load_entry(self.date_str)
         
@@ -347,18 +355,21 @@ class DiaryScreen(Screen):
 
     def change_day(self, offset, direction='left'):
         new_date = dm.get_date_offset(self.current_date_str, offset)
-        self.current_date_str = new_date
         self.load_day_into_view(new_date, animate=True, direction=direction)
 
     def load_day_into_view(self, date_str, animate=True, direction='left'):
+        # Sync state property
+        self.current_date_str = date_str
+        
         dt = datetime.strptime(date_str, "%Y-%m-%d")
         today = datetime.now().strftime("%Y-%m-%d")
         
-        self.current_date_display_day = dt.strftime("%A").upper()
         if date_str == today:
-             self.current_date_display_date = "Today"
+            self.current_date_display_day = "TODAY"
         else:
-            self.current_date_display_date = dt.strftime("%b %d")
+            self.current_date_display_day = dt.strftime("%A").upper()
+            
+        self.current_date_display_date = dt.strftime("%b %d, %Y")
         
         manager = self.ids.day_manager
         if manager.has_screen(date_str):
@@ -422,6 +433,88 @@ class DetailScreen(Screen):
         # Since DetailScreen covers everything, we just go back to 'home'
         # The home screen is already on 'diary' tab.
         App.get_running_app().root.current = 'home'
+
+class CalendarViewScreen(Screen):
+    target_year = NumericProperty(datetime.now().year)
+    
+    def setup_view(self, year):
+        self.target_year = year
+        self.populate_calendar()
+
+    def populate_calendar(self):
+        container = self.ids.calendar_container
+        container.clear_widgets()
+        
+        all_data = dm.get_all_entries()
+        
+        # We'll render 12 months for self.target_year
+        months = ["January", "February", "March", "April", "May", "June", 
+                  "July", "August", "September", "October", "November", "December"]
+        
+        for i, month_name in enumerate(months):
+            m_idx = i + 1
+            
+            # Month Header
+            from kivy.uix.label import Label
+            header = Label(text=f"{month_name} {self.target_year}", font_size='20sp', 
+                           color=(0.788, 0.82, 0.851, 1), size_hint_y=None, height='40dp', bold=True)
+            container.add_widget(header)
+            
+            # Days Header (Mo Tu We ...)
+            days_header = GridLayout(cols=7, size_hint_y=None, height='30dp', spacing=5)
+            for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]:
+                lbl = Label(text=d, color=(0.545, 0.58, 0.62, 1), font_size='12sp')
+                days_header.add_widget(lbl)
+            container.add_widget(days_header)
+            
+            # Days Grid
+            # Calculate gridrows
+            # First day of month
+            start_date = datetime(self.target_year, m_idx, 1).date()
+            if m_idx == 12:
+                end_date = datetime(self.target_year + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(self.target_year, m_idx + 1, 1).date() - timedelta(days=1)
+                
+            days_in_month = (end_date - start_date).days + 1
+            start_weekday = start_date.weekday() # 0=Mon
+            
+            # Total cells = start_padding + days
+            # We need explicit grid layout
+            grid = GridLayout(cols=7, size_hint_y=None, spacing=5, padding=[0, 0, 0, 20])
+            # Bind height to minimum height
+            grid.bind(minimum_height=grid.setter('height'))
+            
+            # Padding
+            from widgets import CalendarDayCell
+            for _ in range(start_weekday):
+                empty = CalendarDayCell(text="", color_bg=(0,0,0,0))
+                grid.add_widget(empty)
+                
+            # Days
+            current_d = start_date
+            for _ in range(days_in_month):
+                d_str = current_d.strftime("%Y-%m-%d")
+                
+                # Check Data
+                has_entry = d_str in all_data
+                
+                # Colors
+                # Green: (0.137, 0.525, 0.211, 1) or similar accent
+                bg_color = (0.15, 0.17, 0.20, 1) # Default Surface
+                txt_color = (0.788, 0.82, 0.851, 1) # Main Text
+                
+                if has_entry:
+                    bg_color = (0.2, 0.6, 0.3, 1) # Active Green
+                    txt_color = (1, 1, 1, 1)
+                
+                cell = CalendarDayCell(text=str(current_d.day), color_bg=bg_color, text_color=txt_color, date_ref=d_str)
+                grid.add_widget(cell)
+                
+                current_d += timedelta(days=1)
+                
+            container.add_widget(grid)
+
 
 class QuestionEditorScreen(Screen):
     questions = ListProperty([])

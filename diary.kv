@@ -52,6 +52,7 @@ WindowManager:
     HomeScreen:
     QuestionEditorScreen:
     DetailScreen:
+    CalendarViewScreen:
 
 #:import NavButton widgets.NavButton
 #:import BottomNavBar widgets.BottomNavBar
@@ -60,6 +61,8 @@ WindowManager:
 #:import StatCard widgets.StatCard
 #:import RecentEntryItem widgets.RecentEntryItem
 #:import HeatmapCell widgets.HeatmapCell
+#:import CalendarViewScreen screens.CalendarViewScreen
+#:import CalendarDayCell widgets.CalendarDayCell
 
 <NavButton>:
     orientation: 'vertical'
@@ -236,14 +239,47 @@ WindowManager:
                     height: '140dp'
                     spacing: 10
                     
-                    Label:
-                        text: "Contribution Graph"
+                    BoxLayout:
                         size_hint_y: None
-                        height: '20dp'
-                        font_size: '14sp'
-                        color: C_TEXT_SEC
-                        text_size: self.size
-                        halign: 'left'
+                        height: '30dp'
+                        spacing: 10
+                        
+                        Label:
+                            text: "Entry Graph"
+                            font_size: '14sp'
+                            color: C_TEXT_SEC
+                            size_hint_x: 1
+                            halign: 'left'
+                            text_size: self.size
+                            valign: 'middle'
+
+                        BoxLayout:
+                            size_hint_x: None
+                            width: '120dp'
+                            spacing: 5
+                            
+                            Button: # Prev Year
+                                text: "<"
+                                on_release: root.change_heatmap_year(-1)
+                                size_hint_x: None
+                                width: '30dp'
+                                background_color: 0,0,0,0
+                                color: C_ACCENT
+                                bold: True
+                            
+                            Label:
+                                text: str(root.heatmap_year)
+                                color: C_TEXT_MAIN
+                                bold: True
+                            
+                            Button: # Next Year
+                                text: ">"
+                                on_release: root.change_heatmap_year(1)
+                                size_hint_x: None
+                                width: '30dp'
+                                background_color: 0,0,0,0
+                                color: C_ACCENT
+                                bold: True
 
                     ScrollView:
                         do_scroll_x: True
@@ -626,6 +662,89 @@ WindowManager:
                 height: self.minimum_height
                 padding: [20, 10]
                 spacing: 12
+
+<CalendarDayCell>:
+    size_hint_y: None
+    height: self.width # Square cells
+    canvas.before:
+        Color:
+            rgba: root.color_bg
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [4]
+            
+    Label:
+        text: root.text
+        bold: True
+        font_size: '14sp'
+        color: root.text_color
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+<CalendarViewScreen>:
+    name: "calendar"
+    BoxLayout:
+        orientation: "vertical"
+        canvas.before:
+            Color:
+                rgba: C_BG
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        # Header
+        BoxLayout:
+            size_hint_y: None
+            height: '60dp'
+            padding: [15, 0]
+            canvas.before:
+                Color:
+                    rgba: C_SURFACE
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: C_BORDER
+                Line:
+                    points: [self.x, self.y, self.width, self.y]
+                    width: 1
+            
+            GhostButton:
+                text: u"\ue5c4" # Arrow Back
+                font_name: 'assets/MaterialIcons-Regular.ttf'
+                font_size: '28sp'
+                size_hint_x: None
+                width: '50dp'
+                halign: 'left'
+                color: C_TEXT_MAIN
+                on_release:
+                    app.root.transition.direction = 'down'
+                    app.root.current = 'home'
+
+            Label:
+                text: "Calendar View"
+                halign: 'center'
+                valign: 'middle'
+                color: C_TEXT_MAIN
+                bold: True
+                font_size: '18sp'
+                
+            # Spacer for symmetry
+            Widget:
+                size_hint_x: None
+                width: '50dp'
+
+        # Scrollable Content
+        ScrollView:
+            do_scroll_x: False
+            
+            BoxLayout:
+                id: calendar_container
+                orientation: 'vertical'
+                padding: [20, 20]
+                spacing: 20
+                size_hint_y: None
+                height: self.minimum_height
 
 <DayPage>:
     BoxLayout:

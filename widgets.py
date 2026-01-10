@@ -123,5 +123,44 @@ class HeatmapCell(ButtonBehavior, BoxLayout):
     date_ref = StringProperty("")
     
     def on_release(self):
-        # Navigation disabled as per user request
-        pass
+        # Open Calendar View for the specific year
+        if not self.date_ref: return
+        
+        from datetime import datetime
+        try:
+            dt = datetime.strptime(self.date_ref, "%Y-%m-%d")
+            year = dt.year
+            
+            app = App.get_running_app()
+            if app and app.root:
+                cal_screen = app.root.get_screen('calendar')
+                cal_screen.setup_view(year)
+                app.root.transition.direction = 'up'
+                app.root.current = 'calendar'
+        except ValueError:
+            pass
+
+class CalendarDayCell(ButtonBehavior, BoxLayout):
+    text = StringProperty("")
+    color_bg = ColorProperty((0.15, 0.17, 0.20, 1))
+    text_color = ColorProperty((0.5, 0.5, 0.5, 1))
+    date_ref = StringProperty("")
+    
+    def on_release(self):
+        if not self.date_ref: return
+        
+        app = App.get_running_app()
+        if app and app.root:
+            # 1. Get Home Screen
+            home = app.root.get_screen('home')
+            
+            # 2. Switch Home internal tab to Diary
+            home.navigate_to('diary')
+            
+            # 3. Load specific date in Diary
+            diary = home.ids.content_manager.get_screen('diary')
+            diary.load_day_into_view(self.date_ref, animate=False)
+            
+            # 4. Navigate WindowManager back to Home
+            app.root.transition.direction = 'down'
+            app.root.current = 'home'
