@@ -1,4 +1,4 @@
-from kivy.uix.screenmanager import ScreenManager, Screen, SlideTransition
+from kivy.uix.screenmanager import ScreenManager, Screen, SlideTransition, NoTransition
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.animation import Animation
@@ -9,7 +9,7 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from diary_manager import DiaryManager
-from widgets import DiaryEntryItemCard, QuestionEditItem
+from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton
 from datetime import datetime
 
 # Initialize Data Manager
@@ -18,20 +18,23 @@ dm = DiaryManager()
 class WindowManager(ScreenManager):
     pass
 
-class HomeScreen(Screen):
-    def on_enter(self, *args):
-        Clock.schedule_once(self._animate_entrance)
-    
-    def _animate_entrance(self, dt):
-        if 'title_label' not in self.ids: return
-        Animation(opacity=1, pos_hint={'center_x': 0.5}, duration=0.8, t='out_cubic').start(self.ids.title_label)
-        Clock.schedule_once(lambda dt: Animation(opacity=1, duration=0.8).start(self.ids.subtitle_label), 0.2)
-        Clock.schedule_once(lambda dt: Animation(opacity=1, duration=0.6, t='out_back').start(self.ids.start_btn), 0.5)
+# ... imports
 
-    def on_leave(self, *args):
-        self.ids.title_label.opacity = 0
-        self.ids.subtitle_label.opacity = 0
-        self.ids.start_btn.opacity = 0
+# ...
+
+class PlaceholderDisplay(Screen):
+    text = StringProperty("")
+
+class HomeScreen(Screen):
+    def navigate_to(self, screen_name):
+        manager = self.ids.content_manager
+        # Disable transition for tab switching (instant)
+        manager.transition = NoTransition()
+        manager.current = screen_name
+
+    def on_enter(self, *args):
+        pass # No more animation needed for now
+
 
 class DayPage(Screen):
     def __init__(self, date_str, **kwargs):
@@ -116,6 +119,10 @@ class DiaryScreen(Screen):
         dm.save_entry(self.current_date_str, full_data)
         current_screen.populate_grid(0)
 
+def get_diary():
+    app = App.get_running_app()
+    return app.root.get_screen('home').ids.content_manager.get_screen('diary')
+
 class DetailScreen(Screen):
     question = StringProperty("")
     answer = StringProperty("")
@@ -131,24 +138,18 @@ class DetailScreen(Screen):
 
     def save_and_close(self):
         new_ans = self.ids.detail_input.text
-        diary_screen = App.get_running_app().root.get_screen('diary')
+        diary_screen = get_diary()
         diary_screen.update_entry_data(self.question, new_ans)
         App.get_running_app().root.transition.direction = 'down'
-        App.get_running_app().root.current = 'diary'
+        # Since DetailScreen covers everything, we just go back to 'home'
+        # The home screen is already on 'diary' tab.
+        App.get_running_app().root.current = 'home'
 
 class QuestionEditorScreen(Screen):
     questions = ListProperty([])
 
     def on_enter(self):
-        # We load defaults. We edit a COPY of the list.
-        # But wait, should we load defaults or the current day's active questions?
-        # User requirement implies modifying "existing questions".
-        # If we are on a specific day, maybe we want to edit THAT day's questions.
-        # "Add a pencil icon at the top of the entry page".
-        # It's logical to edit the questions of the *current* view.
-        
-        app = App.get_running_app()
-        diary_screen = app.root.get_screen('diary')
+        diary_screen = get_diary()
         current_date = diary_screen.current_date_str
         
         # Load questions for that specific date logic
@@ -222,10 +223,11 @@ class QuestionEditorScreen(Screen):
 
     def go_back(self):
         app = App.get_running_app()
-        diary_screen = app.root.get_screen('diary')
+        diary_screen = get_diary()
         
         # Force refresh of the current day view
         diary_screen.load_day_into_view(self.date_target, animate=False)
         
         app.root.transition.direction = 'down'
-        app.root.current = 'diary'
+        # Return to 'home' main screen (which contains the diary)
+        app.root.current = 'home'

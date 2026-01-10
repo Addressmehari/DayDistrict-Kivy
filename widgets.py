@@ -25,14 +25,18 @@ class SwipeBox(BoxLayout):
         if abs(dx) > 80 and abs(dy) < 60:
             app = App.get_running_app()
             if app and app.root:
-                screen = app.root.get_screen('diary')
-                if dx > 0: 
-                    # Swipe Right -> Previous Day (Left)
-                    screen.change_day(-1, direction='right')
-                else:
-                    # Swipe Left -> Next Day (Right)
-                    screen.change_day(1, direction='left')
-                return True
+                # DiaryScreen is now nested: Home -> Content_Manager -> Diary
+                home = app.root.get_screen('home')
+                # Check if we are actually ON the diary tab before swiping
+                if home.ids.content_manager.current == 'diary':
+                    screen = home.ids.content_manager.get_screen('diary')
+                    if dx > 0: 
+                        # Swipe Right -> Previous Day (Left)
+                        screen.change_day(-1, direction='right')
+                    else:
+                        # Swipe Left -> Next Day (Right)
+                        screen.change_day(1, direction='left')
+                    return True
         return False
 
 class DiaryEntryItemCard(ButtonBehavior, BoxLayout):
@@ -51,6 +55,17 @@ class QuestionEditItem(BoxLayout):
     text = StringProperty("")
     # Signal removal to parent or controller
     def remove(self):
-        # We'll bind this in the screen logic or use event bubbling if needed.
-        # For now, let the button inside call a callback or let the screen bind it.
         pass
+
+class NavButton(ButtonBehavior, BoxLayout):
+    icon_type = StringProperty("home")
+    
+    def on_release(self):
+        # The actual navigation is handled by the KV on_release binding calling root.navigate_to.
+        # Here we could implement visual state toggling if we were using a ToggleButton group.
+        # For now, Kivy's ButtonBehavior handles 'down' state only momentarily.
+        # If we want persistent highlighting, we need to bind to the current screen name.
+        pass
+
+class BottomNavBar(BoxLayout):
+    pass

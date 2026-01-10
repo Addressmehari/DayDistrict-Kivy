@@ -50,77 +50,177 @@
 
 WindowManager:
     HomeScreen:
-    DiaryScreen:
     QuestionEditorScreen:
     DetailScreen:
+
+#:import NavButton widgets.NavButton
+#:import BottomNavBar widgets.BottomNavBar
+#:import PlaceholderDisplay screens.PlaceholderDisplay
+
+<NavButton>:
+    orientation: 'vertical'
+    size_hint_y: 1
+    padding: [0, 8]
+    
+    # Icon Container using Canvas
+    Widget:
+        id: icon_d
+        size_hint: (None, None)
+        size: (30, 30)
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+        canvas.after:
+            # Color Logic
+            Color:
+                rgba: (1, 1, 1, 1) if root.icon_type == 'center' else (C_ACCENT if root.state == 'down' else C_TEXT_SEC)
+
+            # --- CENTER DIARY BUTTON (Background) ---
+            Color:
+                rgba: C_ACCENT if root.icon_type == 'center' else (0,0,0,0)
+            Ellipse:
+                pos: (self.center_x - 28, self.center_y - 28) if root.icon_type == 'center' else (0,0)
+                size: (56, 56) if root.icon_type == 'center' else (0,0)
+
+            # --- ICONS DRAWING ---
+            Color:
+                rgba: (1, 1, 1, 1) if root.icon_type == 'center' else (C_ACCENT if root.state == 'down' else C_TEXT_SEC)
+
+            # HOME ICON (House)
+            Line:
+                width: 1.8
+                points: [self.center_x - 10, self.center_y - 1, self.center_x, self.center_y + 9, self.center_x + 10, self.center_y - 1] if root.icon_type == 'home' else []
+                cap: 'round'
+                joint: 'round'
+            Line:
+                width: 1.8
+                rectangle: (self.center_x - 7, self.center_y - 9, 14, 9) if root.icon_type == 'home' else (0,0,0,0)
+
+            # MAP ICON (Pin)
+            Line:
+                width: 1.8
+                circle: (self.center_x, self.center_y + 2, 6) if root.icon_type == 'map' else (0,0,0)
+            Line:
+                width: 1.8
+                points: [self.center_x, self.center_y - 4, self.center_x, self.center_y - 10] if root.icon_type == 'map' else []
+
+            # SETTINGS ICON (Sliders/Controls style instead of gear)
+            Line:
+                width: 1.8
+                points: [self.center_x - 8, self.center_y + 3, self.center_x + 8, self.center_y + 3] if root.icon_type == 'settings' else []
+            Line:
+                width: 1.8
+                circle: (self.center_x - 4, self.center_y + 3, 3) if root.icon_type == 'settings' else (0,0,0)
+            Line:
+                width: 1.8
+                points: [self.center_x - 8, self.center_y - 5, self.center_x + 8, self.center_y - 5] if root.icon_type == 'settings' else []
+            Line:
+                width: 1.8
+                circle: (self.center_x + 4, self.center_y - 5, 3) if root.icon_type == 'settings' else (0,0,0)
+
+            # PROFILE ICON (User)
+            Line:
+                width: 1.8
+                circle: (self.center_x, self.center_y + 5, 4.5) if root.icon_type == 'profile' else (0,0,0)
+            Line:
+                width: 1.8
+                # Shoulders
+                ellipse: (self.center_x - 9, self.center_y - 11, 18, 10, 0, 180) if root.icon_type == 'profile' else (0,0,0,0)
+
+            # CENTER ICON (Pencil)
+            PushMatrix
+            Rotate:
+                angle: -45 if root.icon_type == 'center' else 0
+                origin: self.center
+            Line:
+                width: 2
+                rectangle: (self.center_x - 3, self.center_y - 6, 6, 12) if root.icon_type == 'center' else (0,0,0,0)
+            Line:
+                width: 2
+                points: [self.center_x - 3, self.center_y - 6, self.center_x + 3, self.center_y - 6, self.center_x, self.center_y - 11] if root.icon_type == 'center' else []
+                close: True
+            PopMatrix
+
+
+<PlaceholderDisplay>:
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            text: root.text
+            color: C_TEXT_SEC
+            font_size: '20sp'
 
 <HomeScreen>:
     name: "home"
     
     BoxLayout:
         orientation: "vertical"
-        padding: 40
-        spacing: 0
         canvas.before:
             Color:
                 rgba: C_BG
             Rectangle:
                 pos: self.pos
                 size: self.size
-            # GitHub Activity Grid aesthetic (dots)
-            Color:
-                rgba: (0.1, 0.3, 0.1, 0.2)
-            Ellipse:
-                pos: (root.width * 0.7, root.height * 0.8)
-                size: (100, 100)
-            Ellipse:
-                pos: (root.width * 0.1, root.height * 0.5)
-                size: (40, 40)
 
-        Widget:
-            size_hint_y: 0.3
+        # Content Area
+        ScreenManager:
+            id: content_manager
+            
+            PlaceholderDisplay:
+                name: "home_tab"
+                text: "Home Dashboard\n(Coming Soon)"
+            
+            PlaceholderDisplay:
+                name: "map_tab"
+                text: "City Map\n(Coming Soon)"
+            
+            DiaryScreen:
+                name: "diary"
 
-        Label:
-            text: "git commit -m\\n'my day'"
-            font_size: '42sp'
-            font_name: 'Roboto' # Monospace would be cool but keep roboto for clean
-            # bold: True
-            color: C_TEXT_MAIN
+            PlaceholderDisplay:
+                name: "settings_tab"
+                text: "Settings\n(Coming Soon)"
+            
+            PlaceholderDisplay:
+                name: "profile_tab"
+                text: "Profile\n(Coming Soon)"
+
+        # Bottom Navigation Bar
+        BoxLayout:
             size_hint_y: None
-            height: self.texture_size[1]
-            halign: 'left'
-            text_size: (root.width - 80, None)
-            id: title_label
-            opacity: 0
+            height: '80dp'
+            padding: [15, 10, 15, 20] # Extra bottom padding for "floating" feel on mobile
+            spacing: 0
+            canvas.before:
+                Color:
+                    rgba: (0.086, 0.105, 0.133, 0.98) # Slight transparency C_SURFACE
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: (1, 1, 1, 0.05) # Very subtle top highlight
+                Line:
+                    points: [self.x, self.y + self.height, self.width, self.y + self.height]
+                    width: 1
+            
+            NavButton:
+                icon_type: 'home'
+                on_release: root.navigate_to('home_tab')
+            
+            NavButton:
+                icon_type: 'map'
+                on_release: root.navigate_to('map_tab')
+            
+            NavButton:
+                icon_type: 'center'
+                size_hint_x: 1.2
+                on_release: root.navigate_to('diary')
 
-        Label:
-            text: "Push your daily updates."
-            font_size: '18sp'
-            color: C_TEXT_SEC
-            size_hint_y: None
-            height: self.texture_size[1]
-            halign: 'left'
-            text_size: (root.width - 80, None)
-            padding: [0, 20]
-            id: subtitle_label
-            opacity: 0
-
-        Widget: 
-            size_hint_y: 0.2
-
-        FlatButton:
-            text: "Start Log"
-            size_hint: (None, None)
-            size: (200, 50)
-            pos_hint: {"center_x": 0.5}
-            id: start_btn
-            opacity: 0
-            on_release: 
-                app.root.current = "diary"
-                app.root.transition.direction = "left"
-
-        Widget:
-            size_hint_y: 0.3
+            NavButton:
+                icon_type: 'settings'
+                on_release: root.navigate_to('settings_tab')
+            
+            NavButton:
+                icon_type: 'profile'
+                on_release: root.navigate_to('profile_tab')
 
 <DiaryScreen>:
     name: "diary"
@@ -179,13 +279,13 @@ WindowManager:
 
             BoxLayout:
                 size_hint_x: None
-                width: '100dp'
+                width: '60dp' # Reduced width since we only have one button now
                 spacing: 10
                 
                 # Edit Questions Button (Pencil Icon Manual Draw)
                 GhostButton:
                     text: ""
-                    size_hint_x: 0.6
+                    size_hint_x: 1
                     on_release:
                         app.root.transition.direction = 'up'
                         app.root.current = 'editor'
@@ -210,16 +310,6 @@ WindowManager:
                             width: 1.5
                             rectangle: (self.center_x - 3, self.center_y + 4, 6, 3)
                         PopMatrix
-
-                GhostButton:
-                    text: "Home"
-                    size_hint_x: 0.4
-                    width: '50dp'
-                    font_size: '14sp'
-                    color: C_ACCENT
-                    on_release: 
-                        app.root.current = "home"
-                        app.root.transition.direction = "right"
 
         # Content
         ScreenManager:
@@ -320,7 +410,7 @@ WindowManager:
                 color: C_TEXT_SEC
                 on_release: 
                     app.root.transition.direction = 'down'
-                    app.root.current = 'diary'
+                    app.root.current = 'home'
 
             Label:
                 text: "Edit Questions"
