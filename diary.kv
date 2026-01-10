@@ -62,82 +62,26 @@ WindowManager:
     size_hint_y: 1
     padding: [0, 8]
     
-    # Icon Container using Canvas
-    Widget:
+    # Icon Container using Material Icons Font
+    Label:
         id: icon_d
+        text: 
+            {'home': u"\ue88a", 'map': u"\ue55b", 'settings': u"\ue8b8", 'profile': u"\ue7fd", 'center': u"\ue3c9"}.get(root.icon_type, "")
+        font_name: 'assets/MaterialIcons-Regular.ttf'
+        font_size: root.icon_size + sp(0) # Bind to property
+        color: 
+            (1, 1, 1, 1) if root.icon_type == 'center' else (C_ACCENT if root.state == 'down' else C_TEXT_SEC)
         size_hint: (None, None)
-        size: (30, 30)
+        size: (40, 40)
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        canvas.after:
-            # Color Logic
-            Color:
-                rgba: (1, 1, 1, 1) if root.icon_type == 'center' else (C_ACCENT if root.state == 'down' else C_TEXT_SEC)
-
-            # --- CENTER DIARY BUTTON (Background) ---
+        
+        canvas.before:
+            # CENTER FAB GLOW BACKGROUND
             Color:
                 rgba: C_ACCENT if root.icon_type == 'center' else (0,0,0,0)
             Ellipse:
                 pos: (self.center_x - 28, self.center_y - 28) if root.icon_type == 'center' else (0,0)
                 size: (56, 56) if root.icon_type == 'center' else (0,0)
-
-            # --- ICONS DRAWING ---
-            Color:
-                rgba: (1, 1, 1, 1) if root.icon_type == 'center' else (C_ACCENT if root.state == 'down' else C_TEXT_SEC)
-
-            # HOME ICON (House)
-            Line:
-                width: 1.8
-                points: [self.center_x - 10, self.center_y - 1, self.center_x, self.center_y + 9, self.center_x + 10, self.center_y - 1] if root.icon_type == 'home' else []
-                cap: 'round'
-                joint: 'round'
-            Line:
-                width: 1.8
-                rectangle: (self.center_x - 7, self.center_y - 9, 14, 9) if root.icon_type == 'home' else (0,0,0,0)
-
-            # MAP ICON (Pin)
-            Line:
-                width: 1.8
-                circle: (self.center_x, self.center_y + 2, 6) if root.icon_type == 'map' else (0,0,0)
-            Line:
-                width: 1.8
-                points: [self.center_x, self.center_y - 4, self.center_x, self.center_y - 10] if root.icon_type == 'map' else []
-
-            # SETTINGS ICON (Sliders/Controls style instead of gear)
-            Line:
-                width: 1.8
-                points: [self.center_x - 8, self.center_y + 3, self.center_x + 8, self.center_y + 3] if root.icon_type == 'settings' else []
-            Line:
-                width: 1.8
-                circle: (self.center_x - 4, self.center_y + 3, 3) if root.icon_type == 'settings' else (0,0,0)
-            Line:
-                width: 1.8
-                points: [self.center_x - 8, self.center_y - 5, self.center_x + 8, self.center_y - 5] if root.icon_type == 'settings' else []
-            Line:
-                width: 1.8
-                circle: (self.center_x + 4, self.center_y - 5, 3) if root.icon_type == 'settings' else (0,0,0)
-
-            # PROFILE ICON (User)
-            Line:
-                width: 1.8
-                circle: (self.center_x, self.center_y + 5, 4.5) if root.icon_type == 'profile' else (0,0,0)
-            Line:
-                width: 1.8
-                # Shoulders
-                ellipse: (self.center_x - 9, self.center_y - 11, 18, 10, 0, 180) if root.icon_type == 'profile' else (0,0,0,0)
-
-            # CENTER ICON (Pencil)
-            PushMatrix
-            Rotate:
-                angle: -45 if root.icon_type == 'center' else 0
-                origin: self.center
-            Line:
-                width: 2
-                rectangle: (self.center_x - 3, self.center_y - 6, 6, 12) if root.icon_type == 'center' else (0,0,0,0)
-            Line:
-                width: 2
-                points: [self.center_x - 3, self.center_y - 6, self.center_x + 3, self.center_y - 6, self.center_x, self.center_y - 11] if root.icon_type == 'center' else []
-                close: True
-            PopMatrix
 
 
 <PlaceholderDisplay>:
@@ -203,23 +147,29 @@ WindowManager:
             
             NavButton:
                 icon_type: 'home'
+                group: 'nav'
+                state: 'down' # Default active
                 on_release: root.navigate_to('home_tab')
             
             NavButton:
                 icon_type: 'map'
+                group: 'nav'
                 on_release: root.navigate_to('map_tab')
             
             NavButton:
                 icon_type: 'center'
+                group: 'nav'
                 size_hint_x: 1.2
                 on_release: root.navigate_to('diary')
 
             NavButton:
                 icon_type: 'settings'
+                group: 'nav'
                 on_release: root.navigate_to('settings_tab')
             
             NavButton:
                 icon_type: 'profile'
+                group: 'nav'
                 on_release: root.navigate_to('profile_tab')
 
 <DiaryScreen>:
@@ -282,34 +232,16 @@ WindowManager:
                 width: '60dp' # Reduced width since we only have one button now
                 spacing: 10
                 
-                # Edit Questions Button (Pencil Icon Manual Draw)
+                # Edit Questions Button (Pencil Icon)
                 GhostButton:
-                    text: ""
+                    text: u"\ue3c9" # Material Icon 'edit'
+                    font_name: 'assets/MaterialIcons-Regular.ttf'
+                    font_size: '28sp'
                     size_hint_x: 1
+                    color: C_TEXT_SEC
                     on_release:
                         app.root.transition.direction = 'up'
                         app.root.current = 'editor'
-                    canvas.after:
-                        PushMatrix
-                        Rotate:
-                            angle: -45
-                            origin: self.center
-                        Color:
-                            rgba: C_TEXT_SEC
-                        # Pencil Body
-                        Line:
-                            width: 1.5
-                            rectangle: (self.center_x - 3, self.center_y - 8, 6, 12)
-                        # Pencil Tip (Triangle)
-                        Line:
-                            width: 1.5
-                            points: [self.center_x - 3, self.center_y - 8, self.center_x + 3, self.center_y - 8, self.center_x, self.center_y - 13]
-                            close: True
-                        # Eraser (Top)
-                        Line:
-                            width: 1.5
-                            rectangle: (self.center_x - 3, self.center_y + 4, 6, 3)
-                        PopMatrix
 
         # Content
         ScreenManager:

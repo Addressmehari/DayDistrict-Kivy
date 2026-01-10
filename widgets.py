@@ -57,14 +57,36 @@ class QuestionEditItem(BoxLayout):
     def remove(self):
         pass
 
-class NavButton(ButtonBehavior, BoxLayout):
+from kivy.uix.behaviors import ToggleButtonBehavior
+from kivy.animation import Animation
+from kivy.properties import NumericProperty
+
+class NavButton(ToggleButtonBehavior, BoxLayout):
     icon_type = StringProperty("home")
+    icon_size = NumericProperty(28) # Base size
+
+    def on_icon_type(self, instance, value):
+        # Set distinct base size for center button
+        if value == 'center':
+            self.icon_size = 32
+        else:
+            self.icon_size = 28
+
+    def on_state(self, instance, value):
+        if value == 'down':
+            # Active: Pop effect (scale up)
+            target = 34 if self.icon_type == 'center' else 32
+            # Small overshoot for "bounce" feel
+            anim = Animation(icon_size=target, duration=0.2, t='out_back')
+            anim.start(self)
+        else:
+            # Inactive: Return to normal
+            target = 32 if self.icon_type == 'center' else 28
+            anim = Animation(icon_size=target, duration=0.15)
+            anim.start(self)
     
     def on_release(self):
-        # The actual navigation is handled by the KV on_release binding calling root.navigate_to.
-        # Here we could implement visual state toggling if we were using a ToggleButton group.
-        # For now, Kivy's ButtonBehavior handles 'down' state only momentarily.
-        # If we want persistent highlighting, we need to bind to the current screen name.
+        # Logic handled by KV binding to navigate_to
         pass
 
 class BottomNavBar(BoxLayout):
