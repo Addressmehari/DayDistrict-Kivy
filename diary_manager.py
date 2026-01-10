@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 from datetime import datetime, timedelta
 
 DATA_FILE = "diary_data.json"
@@ -70,6 +71,8 @@ class DiaryManager:
                 # Write back changes (removal) and return
                 with open(DATA_FILE, "w") as f:
                     json.dump(data, f, indent=4)
+                
+                self.update_city_visualizer()
                 return
 
         # Normal save
@@ -77,6 +80,24 @@ class DiaryManager:
         
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
+
+        self.update_city_visualizer()
+
+    def update_city_visualizer(self):
+        try:
+            # Run the generator script in the background
+            # We use absolute path to ensure it finds the script
+            # Assumes GitVille folder is in the same directory as this file
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            script_path = os.path.join(base_dir, "GitVille", "generate_diary_city.py")
+            
+            if os.path.exists(script_path):
+                # We need to run python. 'python' command assumed to be in path.
+                # set cwd to GitVille so it writes files there
+                subprocess.Popen(["python", script_path], cwd=os.path.dirname(script_path), 
+                                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        except Exception as e:
+            print(f"Failed to update city visualizer: {e}")
 
     def get_date_offset(self, date_str, offset):
         """

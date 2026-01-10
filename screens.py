@@ -11,6 +11,7 @@ from kivy.uix.button import Button
 from diary_manager import DiaryManager
 from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell
 from datetime import datetime, timedelta
+from map_screen import CityMapScreen
 
 # Initialize Data Manager
 dm = DiaryManager()
@@ -408,6 +409,7 @@ class PlaceholderDisplay(Screen):
     text = StringProperty("")
 
 class HomeScreen(Screen):
+    pass # Defined in KV mostly
     def navigate_to(self, screen_name):
         manager = self.ids.content_manager
         # Disable transition for tab switching (instant)
@@ -427,23 +429,33 @@ class DayPage(Screen):
         Clock.schedule_once(self.populate_grid, 0)
 
     def populate_grid(self, dt):
+        print(f"DEBUG: Populating grid for {self.date_str}")
         if 'grid_layout' not in self.ids:
+            print("DEBUG: grid_layout not found in self.ids, retrying...")
             # KV rule might not have applied yet?
             # Or ids not populated. Retry.
             Clock.schedule_once(self.populate_grid, 0.05)
             return
 
         self.questions = dm.load_questions_for_date(self.date_str)
+        print(f"DEBUG: Questions loaded: {self.questions}")
+        
         saved_data = dm.load_entry(self.date_str)
         
         grid = self.ids.grid_layout
         if grid:
             grid.cols = 3 if len(self.questions) >= 9 else 2
             grid.clear_widgets()
+            
+            if not self.questions:
+                print("DEBUG: No questions found!")
+                # Optional: Add a label saying "No questions configured."
+                
             for q in self.questions:
                 ans = saved_data.get(q, "")
                 item = DiaryEntryItemCard(question=q, answer=ans)
                 grid.add_widget(item)
+            print("DEBUG: Grid populated with widgets")
 
 class DiaryScreen(Screen):
     current_date_str = StringProperty("")

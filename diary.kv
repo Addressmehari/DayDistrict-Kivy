@@ -57,6 +57,7 @@ WindowManager:
 #:import NavButton widgets.NavButton
 #:import BottomNavBar widgets.BottomNavBar
 #:import PlaceholderDisplay screens.PlaceholderDisplay
+#:import CityMapScreen map_screen.CityMapScreen
 #:import HomeDashboard screens.HomeDashboard
 #:import StatCard widgets.StatCard
 #:import RecentEntryItem widgets.RecentEntryItem
@@ -556,9 +557,8 @@ WindowManager:
             HomeDashboard:
                 id: home_tab_screen
             
-            PlaceholderDisplay:
+            CityMapScreen:
                 name: "map_tab"
-                text: "City Map\n(Coming Soon)"
             
             DiaryScreen:
                 name: "diary"
