@@ -9,7 +9,7 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from diary_manager import DiaryManager
-from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell
+from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell, TagChip, ChecklistItem
 from datetime import datetime, timedelta
 from map_screen import CityMapScreen
 
@@ -188,7 +188,8 @@ class HomeDashboard(Screen):
         total_words = 0
         for date_key, questions_dict in all_data.items():
             for ans in questions_dict.values():
-                total_words += len(ans.split())
+                if isinstance(ans, str):
+                    total_words += len(ans.split())
         
         if 'stat_words' in self.ids:
             self.ids.stat_words.value = str(total_words)
@@ -426,6 +427,7 @@ class DayPage(Screen):
         self.name = date_str
         self.date_str = date_str
         self.questions = []
+        self.tags = []
         Clock.schedule_once(self.populate_grid, 0)
 
     def populate_grid(self, dt):
@@ -456,6 +458,35 @@ class DayPage(Screen):
                 item = DiaryEntryItemCard(question=q, answer=ans)
                 grid.add_widget(item)
             print("DEBUG: Grid populated with widgets")
+            
+        # Populate Tags
+        self.populate_tags()
+
+    def populate_tags(self):
+        container = self.ids.tags_container if 'tags_container' in self.ids else None
+        if not container: return
+        
+        container.clear_widgets()
+        self.tags = dm.get_tags(self.date_str)
+        
+        for tag in self.tags:
+            # Create Chip (ReadOnly-ish or just remove? User implies checklist manages them)
+            # But "remove" button on chip is still handy.
+            chip = TagChip(text=tag)
+            chip.remove = lambda t=tag: self.remove_tag(t)
+            container.add_widget(chip)
+
+    def remove_tag(self, tag_text):
+        if tag_text in self.tags:
+            self.tags.remove(tag_text)
+            dm.save_tags(self.date_str, self.tags)
+            self.populate_tags()
+
+    def open_tag_selector(self):
+        # Open Modal
+        modal = TagSelectionModal(date_str=self.date_str, current_tags=self.tags)
+        modal.bind(on_dismiss=lambda x: self.populate_tags()) # Refresh on close
+        modal.open()
 
 class DiaryScreen(Screen):
     current_date_str = StringProperty("")
@@ -550,6 +581,7 @@ class DetailScreen(Screen):
 
 class CalendarViewScreen(Screen):
     target_year = NumericProperty(datetime.now().year)
+    filter_tags = ListProperty([])
     
     def setup_view(self, year):
         self.target_year = year
@@ -619,15 +651,75 @@ class CalendarViewScreen(Screen):
                 txt_color = (0.788, 0.82, 0.851, 1) # Main Text
                 
                 if has_entry:
-                    bg_color = (0.2, 0.6, 0.3, 1) # Active Green
-                    txt_color = (1, 1, 1, 1)
-                
+                     bg_color = (0.2, 0.6, 0.3, 1) # Active Green
+                     txt_color = (1, 1, 1, 1)
+
+                     if self.filter_tags:
+                        entry_tags = all_data.get(d_str, {}).get("tags", [])
+                        # Check intersection (AND logic: ALL filter tags must be present)
+                        if all(tag in entry_tags for tag in self.filter_tags):
+                            # Highlight Matched
+                            bg_color = (1.0, 0.6, 0.2, 1) # Orange/Gold Highlight
+                        else:
+                            # Dim others
+                            bg_color = (0.15, 0.17, 0.20, 0.5)
+                            txt_color = (0.5, 0.5, 0.5, 1)
+
                 cell = CalendarDayCell(text=str(current_d.day), color_bg=bg_color, text_color=txt_color, date_ref=d_str)
                 grid.add_widget(cell)
                 
                 current_d += timedelta(days=1)
                 
             container.add_widget(grid)
+            
+    def open_filter_menu(self):
+        # Open Modal
+        modal = TagFilterModal(current_filters=self.filter_tags, callback=self.update_filters)
+        modal.open()
+
+    def update_filters(self, new_filters):
+        self.filter_tags = new_filters
+        self.populate_calendar()
+
+class TagFilterModal(ModalView):
+    def __init__(self, current_filters, callback, **kwargs):
+        super().__init__(**kwargs)
+        self.current_filters = list(current_filters)
+        self.callback = callback
+        self.size_hint = (0.85, 0.6)
+        self.background_color = (0,0,0,0.5)
+        Clock.schedule_once(self.build_ui, 0)
+        
+    def build_ui(self, dt):
+        container = self.ids.container
+        container.clear_widgets()
+        
+        global_tags = dm.load_global_tags()
+        
+        if not global_tags:
+            container.add_widget(Label(text="No tags defined.", color=(0.5,0.5,0.5,1), halign='center'))
+            return
+            
+        for tag in global_tags:
+            item = ChecklistItem(text=tag)
+            if tag in self.current_filters:
+                item.is_checked = True
+                item.update_icon()
+            
+            # Bind toggle
+            item.on_toggle = self.toggle_tag
+            container.add_widget(item)
+            
+    def toggle_tag(self, tag, is_checked):
+        if is_checked:
+            if tag not in self.current_filters:
+                self.current_filters.append(tag)
+        else:
+            if tag in self.current_filters:
+                self.current_filters.remove(tag)
+        
+        if self.callback:
+            self.callback(self.current_filters)
 
 
 class QuestionEditorScreen(Screen):
@@ -716,3 +808,74 @@ class QuestionEditorScreen(Screen):
         app.root.transition.direction = 'down'
         # Return to 'home' main screen (which contains the diary)
         app.root.current = 'home'
+
+class TagManagerScreen(Screen):
+    tags = ListProperty([])
+    
+    def on_enter(self):
+        self.tags = dm.load_global_tags()
+        self.populate_list()
+        
+    def populate_list(self):
+        self.ids.tag_list.clear_widgets()
+        for tag in self.tags:
+            item = QuestionEditItem(text=tag) # Reuse item style
+            item.remove = lambda x=tag: self.remove_tag(x)
+            self.ids.tag_list.add_widget(item)
+
+    def add_tag(self):
+        new_tag = self.ids.new_tag_input.text.strip()
+        if new_tag:
+             dm.add_global_tag(new_tag)
+             self.tags = dm.load_global_tags()
+             self.populate_list()
+             self.ids.new_tag_input.text = ""
+
+    def remove_tag(self, tag):
+        dm.remove_global_tag(tag)
+        self.tags = dm.load_global_tags()
+        self.populate_list()
+        
+class TagSelectionModal(ModalView):
+    date_str = StringProperty("")
+    
+    def __init__(self, date_str, current_tags, **kwargs):
+        super().__init__(**kwargs)
+        self.date_str = date_str
+        self.current_tags = list(current_tags) # Copy
+        self.size_hint = (0.85, 0.6)
+        self.background_color = (0,0,0,0.5)
+        Clock.schedule_once(self.build_ui, 0)
+        
+    def build_ui(self, dt):
+        container = self.ids.container
+        container.clear_widgets()
+        
+        # Get Global Tags
+        global_tags = dm.load_global_tags()
+        
+        # If no global tags, maybe show label?
+        if not global_tags:
+            container.add_widget(Label(text="No tags defined.\nGo to Edit -> Tags to create some.", color=(0.5,0.5,0.5,1), halign='center'))
+            return
+            
+        for tag in global_tags:
+            item = ChecklistItem(text=tag)
+            if tag in self.current_tags:
+                item.is_checked = True
+                item.update_icon()
+            
+            # Bind toggle
+            item.on_toggle = self.toggle_tag
+            container.add_widget(item)
+            
+    def toggle_tag(self, tag, is_checked):
+        if is_checked:
+            if tag not in self.current_tags:
+                self.current_tags.append(tag)
+        else:
+            if tag in self.current_tags:
+                self.current_tags.remove(tag)
+                
+        dm.save_tags(self.date_str, self.current_tags)
+

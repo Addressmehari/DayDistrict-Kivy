@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 DATA_FILE = "diary_data.json"
 QUESTIONS_FILE = "questions.json"
+TAGS_FILE = "tags.json"
+RESERVED_KEYS = ["tags"]
 
 class DiaryManager:
     def __init__(self):
@@ -14,6 +16,10 @@ class DiaryManager:
         if not os.path.exists(DATA_FILE):
             with open(DATA_FILE, "w") as f:
                 json.dump({}, f)
+        
+        if not os.path.exists(TAGS_FILE):
+            with open(TAGS_FILE, "w") as f:
+                json.dump([], f)
         
         # We assume questions.json exists as we created it, 
         # but for robustness one could check or create default.
@@ -56,27 +62,51 @@ class DiaryManager:
             except json.JSONDecodeError:
                 data = {}
         
-        # Check if entry is effectively empty
-        all_empty = all(not v.strip() for v in answers.values())
+        # Check if entry is effectively empty (ignoring reserved keys if present in answers)
+        # However, save_entry is usually called with just questions.
+        # We must preserve existing tags if they exist in the file but not in 'answers'.
         
-        if all_empty:
-            # Check if schema matches defaults
+        # 1. Get existing tags
+        existing_entry = data.get(date_str, {})
+        existing_tags = existing_entry.get("tags", [])
+        
+        # 2. Add tags to answers to form the full object to save
+        # We make a copy to avoid mutating the passed 'answers' object if the caller reuses it
+        full_entry = answers.copy()
+        if existing_tags:
+            full_entry["tags"] = existing_tags
+            
+        # 3. Check emptiness (ignoring tags and reserved keys for the "ghost entry" logic)
+        # If we have tags, it's NOT empty.
+        has_content = False
+        
+        if existing_tags:
+             has_content = True
+        else:
+            # Check text answers
+            for k, v in answers.items():
+                if k not in RESERVED_KEYS and str(v).strip():
+                    has_content = True
+                    break
+        
+        if not has_content:
+            # Check if schema matches defaults (only if we have no content)
             defaults = self.load_questions()
-            # We use set comparison for schema matching
-            if set(answers.keys()) == set(defaults):
-                # It's an empty default entry. Remove it if it exists.
+            # Keys in answers (excluding reserved) vs defaults
+            answer_keys = {k for k in answers.keys() if k not in RESERVED_KEYS}
+            default_keys = set(defaults)
+            
+            if answer_keys == default_keys:
+                # Ghost entry. Delete if exists.
                 if date_str in data:
                     del data[date_str]
-                
-                # Write back changes (removal) and return
-                with open(DATA_FILE, "w") as f:
-                    json.dump(data, f, indent=4)
-                
-                self.update_city_visualizer()
+                    with open(DATA_FILE, "w") as f:
+                        json.dump(data, f, indent=4)
+                    self.update_city_visualizer()
                 return
 
         # Normal save
-        data[date_str] = answers
+        data[date_str] = full_entry
         
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
@@ -123,6 +153,10 @@ class DiaryManager:
         """
         current_data = self.load_entry(date_str)
         new_data = {}
+        # Preserve tags
+        if "tags" in current_data:
+            new_data["tags"] = current_data["tags"]
+            
         for q in questions_list:
             new_data[q] = current_data.get(q, "")
         self.save_entry(date_str, new_data)
@@ -143,10 +177,80 @@ class DiaryManager:
     def load_questions_for_date(self, date_str):
         """
         Determines the questions to display for a given date.
-        - If data exists for that date, return its keys (legacy/historic mode).
+        - If data exists for that date, return its keys (legacy/historic mode), excluding reserved keys.
         - If no data, return current global defaults.
         """
         entry = self.load_entry(date_str)
         if entry and len(entry) > 0:
-            return list(entry.keys())
+            # Filter out reserved keys
+            keys = [k for k in entry.keys() if k not in RESERVED_KEYS]
+            if keys:
+                return keys
         return self.load_questions()
+
+    def get_tags(self, date_str):
+        entry = self.load_entry(date_str)
+        return entry.get("tags", [])
+
+    def save_tags(self, date_str, tags_list):
+        data = {}
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r") as f:
+                    data = json.load(f)
+            except:
+                data = {}
+        
+        if date_str not in data:
+            data[date_str] = {}
+        
+        data[date_str]["tags"] = tags_list
+        
+        # Verify emptiness for cleanup
+        entry = data[date_str]
+        all_empty = True
+        
+        if entry.get("tags"): # If tags list is not empty
+            all_empty = False
+        else:
+             # Check other keys
+             for k, v in entry.items():
+                 if k != "tags" and str(v).strip():
+                     all_empty = False
+                     break
+        
+        if all_empty:
+             # Check default schema... (ghost check)
+             defaults = self.load_questions()
+             keys = [k for k in entry.keys() if k != "tags"]
+             if set(keys) == set(defaults):
+                 if date_str in data:
+                    del data[date_str]
+        
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+
+    def load_global_tags(self):
+        if os.path.exists(TAGS_FILE):
+            try:
+                with open(TAGS_FILE, "r") as f:
+                    return json.load(f)
+            except:
+                return []
+        return []
+
+    def save_global_tags(self, tags_list):
+        with open(TAGS_FILE, "w") as f:
+            json.dump(tags_list, f, indent=4)
+
+    def add_global_tag(self, tag_text):
+        tags = self.load_global_tags()
+        if tag_text not in tags:
+            tags.append(tag_text)
+            self.save_global_tags(tags)
+
+    def remove_global_tag(self, tag_text):
+        tags = self.load_global_tags()
+        if tag_text in tags:
+            tags.remove(tag_text)
+            self.save_global_tags(tags)

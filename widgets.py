@@ -200,3 +200,27 @@ class CalendarDayCell(ButtonBehavior, BoxLayout):
             # 4. Navigate WindowManager back to Home
             app.root.transition.direction = 'down'
             app.root.current = 'home'
+
+class TagChip(BoxLayout):
+    text = StringProperty("")
+    
+    def remove(self):
+        # Override in implementor or bind on creation
+        pass
+
+class ChecklistItem(ButtonBehavior, BoxLayout):
+    text = StringProperty("")
+    is_checked = False
+    
+    def on_release(self):
+        # Toggle check
+        self.is_checked = not self.is_checked
+        self.update_icon()
+        self.on_toggle(self.text, self.is_checked)
+        
+    def update_icon(self):
+        self.ids.icon.text = u"\ue834" if self.is_checked else u"\ue835"
+        self.ids.icon.color = (0.2, 0.6, 0.8, 1) if self.is_checked else (0.5, 0.5, 0.5, 1)
+
+    def on_toggle(self, text, val):
+        pass

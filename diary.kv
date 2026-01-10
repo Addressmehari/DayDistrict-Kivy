@@ -49,8 +49,10 @@
             radius: [6]
 
 WindowManager:
+
     HomeScreen:
     QuestionEditorScreen:
+    TagManagerScreen:
     DetailScreen:
     CalendarViewScreen:
 
@@ -676,12 +678,23 @@ WindowManager:
                 width: '60dp' # Reduced width since we only have one button now
                 spacing: 10
                 
+                # Tag Icon
+                GhostButton:
+                    text: u"\ue54e" # 'local_offer' tag icon
+                    font_name: 'assets/MaterialIcons-Regular.ttf'
+                    font_size: '28sp'
+                    size_hint_x: 0.5
+                    color: C_TEXT_SEC
+                    on_release: 
+                        # Get current page and open selector
+                        root.ids.day_manager.current_screen.open_tag_selector()
+
                 # Edit Questions Button (Pencil Icon)
                 GhostButton:
                     text: u"\ue3c9" # Material Icon 'edit'
                     font_name: 'assets/MaterialIcons-Regular.ttf'
                     font_size: '28sp'
-                    size_hint_x: 1
+                    size_hint_x: 0.5
                     color: C_TEXT_SEC
                     on_release:
                         app.root.transition.direction = 'up'
@@ -801,6 +814,46 @@ WindowManager:
                 color: C_BTN_OK
                 bold: True
                 on_release: root.prompt_save()
+        
+        # Tabs for Editor Switching
+        BoxLayout:
+            size_hint_y: None
+            height: '40dp'
+            spacing: 0
+            padding: [20, 0]
+            
+            ToggleButton:
+                text: "Questions"
+                group: 'edit_mode'
+                state: 'down'
+                background_color: 0,0,0,0
+                background_normal: ''
+                color: C_ACCENT if self.state == 'down' else C_TEXT_SEC
+                bold: True
+                canvas.after:
+                    Color:
+                        rgba: C_ACCENT if self.state == 'down' else (0,0,0,0)
+                    Line:
+                        points: [self.x, self.y, self.right, self.y]
+                        width: 2
+            
+            ToggleButton:
+                text: "Tags"
+                group: 'edit_mode'
+                state: 'normal'
+                background_color: 0,0,0,0
+                background_normal: ''
+                color: C_ACCENT if self.state == 'down' else C_TEXT_SEC
+                bold: True
+                on_release: 
+                    app.root.transition.direction = 'left'
+                    app.root.current = 'tag_manager' # Navigate to Tag Manager
+                canvas.after:
+                    Color:
+                        rgba: C_ACCENT if self.state == 'down' else (0,0,0,0)
+                    Line:
+                        points: [self.x, self.y, self.right, self.y]
+                        width: 2
 
         # Add New Section
         BoxLayout:
@@ -928,6 +981,15 @@ WindowManager:
                 bold: True
                 font_size: '18sp'
                 
+            GhostButton:
+                text: "Filter: " + ("All" if not root.filter_tags else str(len(root.filter_tags)) + " Selected")
+                size_hint_x: None
+                width: '130dp'
+                font_size: '14sp'
+                color: C_ACCENT
+                on_release: root.open_filter_menu()
+                bold: True
+                
             # Spacer for symmetry
             Widget:
                 size_hint_x: None
@@ -945,21 +1007,283 @@ WindowManager:
                 size_hint_y: None
                 height: self.minimum_height
 
+<TagManagerScreen>:
+    name: "tag_manager"
+    BoxLayout:
+        orientation: "vertical"
+        canvas.before:
+            Color:
+                rgba: C_BG
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        # Header
+        BoxLayout:
+            size_hint_y: None
+            height: '60dp'
+            padding: [15, 0]
+            canvas.before:
+                Color:
+                    rgba: C_SURFACE
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: C_BORDER
+                Line:
+                    points: [self.x, self.y, self.width, self.y]
+                    width: 1
+            
+            GhostButton:
+                text: "Back"
+                size_hint_x: None
+                width: '70dp'
+                color: C_TEXT_SEC
+                on_release: 
+                    app.root.transition.direction = 'right'
+                    app.root.current = 'editor' # Back to Questions
+
+            Label:
+                text: "Manage Tags"
+                bold: True
+                color: C_TEXT_MAIN
+                font_size: '18sp'
+
+            Widget: # Spacer
+                size_hint_x: None
+                width: '70dp'
+
+        # Add New Section
+        BoxLayout:
+            size_hint_y: None
+            height: '80dp'
+            padding: [20, 15]
+            spacing: 15
+            canvas.before:
+                Color:
+                    rgba: (0, 0, 0, 0.2)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            
+            TextInput:
+                id: new_tag_input
+                hint_text: "New tag name..."
+                hint_text_color: C_TEXT_SEC
+                multiline: False
+                background_normal: ''
+                background_active: ''
+                background_color: C_SURFACE
+                foreground_color: C_TEXT_MAIN
+                cursor_color: C_ACCENT
+                padding: [15, 12]
+                font_size: '15sp'
+                size_hint_x: 0.8
+                canvas.after:
+                    Color:
+                        rgba: C_BORDER
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 6)
+                        width: 1
+
+            Button:
+                text: "+"
+                size_hint_x: 0.2
+                background_color: 0, 0, 0, 0
+                background_normal: ''
+                color: (1, 1, 1, 1)
+                font_size: '24sp'
+                bold: True
+                canvas.before:
+                    Color:
+                        rgba: C_BTN_OK
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [6]
+                on_release: root.add_tag()
+
+        ScrollView:
+            size_hint_y: 1
+            BoxLayout:
+                id: tag_list
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                padding: [20, 10]
+                spacing: 12
+
+<ChecklistItem>:
+    size_hint_y: None
+    height: '50dp'
+    padding: [10, 0]
+    spacing: 10
+    canvas.before:
+        Color:
+            rgba: (1, 1, 1, 0.05)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [6]
+
+    Label:
+        id: icon
+        text: u"\ue835" # Checkbox unchecked
+        font_name: 'assets/MaterialIcons-Regular.ttf'
+        font_size: '24sp'
+        color: C_TEXT_SEC
+        size_hint_x: None
+        width: '40dp'
+        
+    Label:
+        text: root.text
+        color: C_TEXT_MAIN
+        font_size: '16sp'
+        halign: 'left'
+        text_size: self.size
+        valign: 'middle'
+
+<TagSelectionModal>:
+    BoxLayout:
+        id: bg
+        orientation: 'vertical'
+        padding: 20
+        spacing: 20
+        canvas.before:
+            Color:
+                rgba: C_SURFACE
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [12]
+            Color:
+                rgba: C_BORDER
+            Line:
+                rounded_rectangle: (self.x, self.y, self.width, self.height, 12)
+                width: 1
+        
+        Label:
+            text: "Select Tags"
+            size_hint_y: None
+            height: '30dp'
+            font_size: '18sp'
+            bold: True
+            color: C_TEXT_MAIN
+            
+        ScrollView:
+            BoxLayout:
+                id: container
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: 2
+        
+        Button:
+            text: "Done"
+            size_hint_y: None
+            height: '40dp'
+            background_color: 0,0,0,0
+            background_normal: ''
+            color: (1,1,1,1)
+            on_release: root.dismiss()
+            canvas.before:
+                Color:
+                    rgba: C_ACCENT
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [6]
+
+<TagChip>:
+    size_hint: None, None
+    size: self.minimum_width, '32dp'
+    padding: [12, 5, 5, 5]
+    spacing: 5
+    canvas.before:
+        Color:
+            rgba: (0.2, 0.4, 0.6, 0.4)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16]
+        Color:
+            rgba: (0.2, 0.4, 0.6, 1)
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 16)
+            width: 1
+            
+    Label:
+        text: root.text
+        size_hint_x: None
+        width: self.texture_size[0]
+        color: (0.8, 0.9, 1, 1)
+        font_size: '13sp'
+        bold: True
+        
+    Button:
+        text: "x"
+        size_hint: None, None
+        size: '20dp', '20dp'
+        background_color: 0,0,0,0
+        background_normal: ''
+        color: (1, 1, 1, 0.5)
+        bold: True
+        pos_hint: {'center_y': 0.5}
+        on_release: root.remove()
+
 <DayPage>:
     BoxLayout:
+        orientation: "vertical"
+        
         ScrollView:
             id: scroll_view
             do_scroll_x: False
             bar_width: 0
             effect_cls: DampedScrollEffect
             
-            GridLayout:
-                id: grid_layout
-                cols: 2
-                spacing: 12
-                padding: [15, 15, 15, 40]
+            BoxLayout: # Wrapper
+                orientation: 'vertical'
                 size_hint_y: None
                 height: self.minimum_height
+                padding: [0, 0, 0, 40]
+                spacing: 20
+                
+                GridLayout: # Questions
+                    id: grid_layout
+                    cols: 2
+                    spacing: 12
+                    padding: [15, 15]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                # Tag Section
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: [15, 0]
+                    spacing: 10
+                    
+                    Label:
+                        text: "Tags"
+                        font_size: '14sp'
+                        color: C_TEXT_SEC
+                        size_hint_y: None
+                        height: '24dp'
+                        halign: 'left'
+                        text_size: self.size
+                        bold: True
+                        opacity: 1 if len(tags_container.children) > 0 else 0
+                        disabled: True if len(tags_container.children) == 0 else False
+                    
+                    StackLayout:
+                        id: tags_container
+                        orientation: 'lr-tb'
+                        spacing: 8
+                        padding: [5, 0]
+                        size_hint_y: None
+                        height: self.minimum_height
 
 <DiaryEntryItemCard>:
     orientation: "vertical"
@@ -1108,3 +1432,53 @@ WindowManager:
                         line_height: 1.5
                         size_hint_y: 1
                         padding: [15, 15]
+<TagFilterModal>:
+    BoxLayout:
+        id: bg
+        orientation: 'vertical'
+        padding: 20
+        spacing: 20
+        canvas.before:
+            Color:
+                rgba: C_SURFACE
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [12]
+            Color:
+                rgba: C_BORDER
+            Line:
+                rounded_rectangle: (self.x, self.y, self.width, self.height, 12)
+                width: 1
+        
+        Label:
+            text: "Filter Tags"
+            size_hint_y: None
+            height: '30dp'
+            font_size: '18sp'
+            bold: True
+            color: C_TEXT_MAIN
+            
+        ScrollView:
+            BoxLayout:
+                id: container
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: 2
+        
+        Button:
+            text: "Close"
+            size_hint_y: None
+            height: '40dp'
+            background_color: 0,0,0,0
+            background_normal: ''
+            color: (1,1,1,1)
+            on_release: root.dismiss()
+            canvas.before:
+                Color:
+                    rgba: C_ACCENT
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [6]
