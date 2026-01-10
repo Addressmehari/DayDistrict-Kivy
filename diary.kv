@@ -13,6 +13,7 @@
 #:import HomeScreen screens.HomeScreen
 #:import DiaryScreen screens.DiaryScreen
 #:import DetailScreen screens.DetailScreen
+#:import QuestionEditorScreen screens.QuestionEditorScreen
 #:import DayPage screens.DayPage
 
 <FlatButton@Button>:
@@ -50,6 +51,7 @@
 WindowManager:
     HomeScreen:
     DiaryScreen:
+    QuestionEditorScreen:
     DetailScreen:
 
 <HomeScreen>:
@@ -175,19 +177,224 @@ WindowManager:
                     text_size: self.size
                     valign: 'top'
 
-            GhostButton:
-                text: "Home"
+            BoxLayout:
                 size_hint_x: None
-                width: '80dp'
-                font_size: '14sp'
-                color: C_ACCENT
-                on_release: 
-                    app.root.current = "home"
-                    app.root.transition.direction = "right"
+                width: '100dp'
+                spacing: 10
+                
+                # Edit Questions Button (Pencil Icon Manual Draw)
+                GhostButton:
+                    text: ""
+                    size_hint_x: 0.6
+                    on_release:
+                        app.root.transition.direction = 'up'
+                        app.root.current = 'editor'
+                    canvas.after:
+                        PushMatrix
+                        Rotate:
+                            angle: -45
+                            origin: self.center
+                        Color:
+                            rgba: C_TEXT_SEC
+                        # Pencil Body
+                        Line:
+                            width: 1.5
+                            rectangle: (self.center_x - 3, self.center_y - 8, 6, 12)
+                        # Pencil Tip (Triangle)
+                        Line:
+                            width: 1.5
+                            points: [self.center_x - 3, self.center_y - 8, self.center_x + 3, self.center_y - 8, self.center_x, self.center_y - 13]
+                            close: True
+                        # Eraser (Top)
+                        Line:
+                            width: 1.5
+                            rectangle: (self.center_x - 3, self.center_y + 4, 6, 3)
+                        PopMatrix
+
+                GhostButton:
+                    text: "Home"
+                    size_hint_x: 0.4
+                    width: '50dp'
+                    font_size: '14sp'
+                    color: C_ACCENT
+                    on_release: 
+                        app.root.current = "home"
+                        app.root.transition.direction = "right"
 
         # Content
         ScreenManager:
             id: day_manager
+
+#:import QuestionEditItem widgets.QuestionEditItem
+
+<QuestionEditItem>:
+    size_hint_y: None
+    height: '60dp'
+    padding: [15, 10]
+    spacing: 15
+    canvas.before:
+        Color:
+            rgba: C_SURFACE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [6]
+        Color:
+            rgba: C_BORDER
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 6)
+            width: 1
+
+    Label:
+        text: root.text
+        text_size: self.size
+        halign: 'left'
+        valign: 'middle'
+        color: C_TEXT_MAIN
+        font_size: '15sp'
+        shorten: True
+        shorten_from: 'right'
+
+    Button:
+        text: ""
+        size_hint_x: None
+        width: '40dp'
+        background_color: 0, 0, 0, 0
+        background_normal: ''
+        on_release: root.remove()
+        canvas.after:
+            Color:
+                rgba: (0.8, 0.3, 0.3, 1)
+            # Trash Bin Body
+            Line:
+                width: 1.2
+                rounded_rectangle: (self.center_x - 6, self.center_y - 7, 12, 14, 2)
+            # Lid
+            Line:
+                width: 1.2
+                points: [self.center_x - 8, self.center_y + 9, self.center_x + 8, self.center_y + 9]
+            # Handle/Knob
+            Line:
+                width: 1.2
+                points: [self.center_x - 2, self.center_y + 9, self.center_x - 2, self.center_y + 11, self.center_x + 2, self.center_y + 11, self.center_x + 2, self.center_y + 9]
+            # Vertical Lines details
+            Line:
+                width: 1
+                points: [self.center_x - 2, self.center_y - 4, self.center_x - 2, self.center_y + 4]
+            Line:
+                width: 1
+                points: [self.center_x + 2, self.center_y - 4, self.center_x + 2, self.center_y + 4]
+
+<QuestionEditorScreen>:
+    name: "editor"
+    BoxLayout:
+        orientation: "vertical"
+        canvas.before:
+            Color:
+                rgba: C_BG
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        # Header
+        BoxLayout:
+            size_hint_y: None
+            height: '60dp'
+            padding: [15, 0]
+            canvas.before:
+                Color:
+                    rgba: C_SURFACE
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: C_BORDER
+                Line:
+                    points: [self.x, self.y, self.width, self.y]
+                    width: 1
+            
+            GhostButton:
+                text: "Cancel"
+                size_hint_x: None
+                width: '70dp'
+                color: C_TEXT_SEC
+                on_release: 
+                    app.root.transition.direction = 'down'
+                    app.root.current = 'diary'
+
+            Label:
+                text: "Edit Questions"
+                bold: True
+                color: C_TEXT_MAIN
+                font_size: '18sp'
+
+            GhostButton:
+                text: "Save"
+                size_hint_x: None
+                width: '70dp'
+                color: C_BTN_OK
+                bold: True
+                on_release: root.prompt_save()
+
+        # Add New Section
+        BoxLayout:
+            size_hint_y: None
+            height: '80dp'
+            padding: [20, 15]
+            spacing: 15
+            canvas.before:
+                Color:
+                    rgba: (0, 0, 0, 0.2)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            
+            TextInput:
+                id: new_q_input
+                hint_text: "Type a new question here..."
+                hint_text_color: C_TEXT_SEC
+                multiline: False
+                background_normal: ''
+                background_active: ''
+                background_color: C_SURFACE
+                foreground_color: C_TEXT_MAIN
+                cursor_color: C_ACCENT
+                padding: [15, 12]  # Center text vertically
+                font_size: '15sp'
+                size_hint_x: 0.8
+                canvas.after:
+                    Color:
+                        rgba: C_BORDER
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, 6)
+                        width: 1
+
+            Button:
+                text: "+"
+                size_hint_x: 0.2
+                background_color: 0, 0, 0, 0
+                background_normal: ''
+                color: (1, 1, 1, 1)
+                font_size: '24sp'
+                bold: True
+                canvas.before:
+                    Color:
+                        rgba: C_BTN_OK
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [6]
+                on_release: root.add_question()
+
+        ScrollView:
+            size_hint_y: 1
+            BoxLayout:
+                id: q_list
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                padding: [20, 10]
+                spacing: 12
 
 <DayPage>:
     BoxLayout:

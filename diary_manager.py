@@ -41,6 +41,11 @@ class DiaryManager:
         """
         Saves answers for a specific date.
         answers: dict of {question: answer}
+        
+        Cleanup Logic: 
+        If an entry has NO content (all empty values) AND its questions (keys) 
+        match the current global defaults, we do NOT save it (we delete it).
+        This prevents 'ghost' entries from cluttering the file.
         """
         data = {}
         if os.path.exists(DATA_FILE):
@@ -50,6 +55,24 @@ class DiaryManager:
             except json.JSONDecodeError:
                 data = {}
         
+        # Check if entry is effectively empty
+        all_empty = all(not v.strip() for v in answers.values())
+        
+        if all_empty:
+            # Check if schema matches defaults
+            defaults = self.load_questions()
+            # We use set comparison for schema matching
+            if set(answers.keys()) == set(defaults):
+                # It's an empty default entry. Remove it if it exists.
+                if date_str in data:
+                    del data[date_str]
+                
+                # Write back changes (removal) and return
+                with open(DATA_FILE, "w") as f:
+                    json.dump(data, f, indent=4)
+                return
+
+        # Normal save
         data[date_str] = answers
         
         with open(DATA_FILE, "w") as f:
@@ -65,3 +88,29 @@ class DiaryManager:
 
     def get_today_date(self):
         return datetime.now().strftime("%Y-%m-%d")
+
+    def save_questions_default(self, questions_list):
+        """
+        Updates the global default questions (questions.json).
+        """
+        with open(QUESTIONS_FILE, "w") as f:
+            json.dump(questions_list, f, indent=4)
+
+    def overwrite_entry_schema(self, date_str, questions_list):
+        """
+        Erases answers for the given date and initializes provided questions with empty answers.
+        Equivalent to 'Apply for today only'.
+        """
+        new_data = {q: "" for q in questions_list}
+        self.save_entry(date_str, new_data)
+
+    def load_questions_for_date(self, date_str):
+        """
+        Determines the questions to display for a given date.
+        - If data exists for that date, return its keys (legacy/historic mode).
+        - If no data, return current global defaults.
+        """
+        entry = self.load_entry(date_str)
+        if entry and len(entry) > 0:
+            return list(entry.keys())
+        return self.load_questions()

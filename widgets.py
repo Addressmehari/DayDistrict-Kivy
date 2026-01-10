@@ -46,3 +46,11 @@ class DiaryEntryItemCard(ButtonBehavior, BoxLayout):
             detail_screen.setup_entry(self.question, self.answer)
             app.root.transition.direction = 'up'
             app.root.current = 'detail'
+
+class QuestionEditItem(BoxLayout):
+    text = StringProperty("")
+    # Signal removal to parent or controller
+    def remove(self):
+        # We'll bind this in the screen logic or use event bubbling if needed.
+        # For now, let the button inside call a callback or let the screen bind it.
+        pass
