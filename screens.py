@@ -34,11 +34,10 @@ class HomeDashboard(Screen):
         # Schedule update to ensure KV ids are populated
         Clock.schedule_once(lambda dt: self.update_view(), 0)
 
-    def change_heatmap_year(self, offset):
-        self.heatmap_year += offset
-        self.update_view()
-
     def update_view(self):
+        # 0. Greeting
+        self.update_greeting()
+
         # 1. Fetch Data
         all_data = dm.get_all_entries()
         
@@ -47,6 +46,97 @@ class HomeDashboard(Screen):
         
         # 3. Heatmap
         self.populate_heatmap(all_data)
+        
+        # 4. Recent Entries
+        self.populate_recent_entries(all_data)
+
+        # 5. Write Now Prompter Logic
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_data = all_data.get(today_str, {})
+        self.update_prompter(today_data)
+
+    def update_prompter(self, today_data):
+        if 'write_now_card' not in self.ids: return
+        card = self.ids.write_now_card
+        
+        # Check if entry is effectively empty
+        # If today_data is empty dict OR all values are empty strings
+        is_empty = True
+        if today_data:
+             if any(v.strip() for v in today_data.values()):
+                 is_empty = False
+        
+        if is_empty:
+            # Show Prompter
+            if card.height == 0:
+                anim = Animation(height=80, opacity=1, duration=0.4, t='out_back')
+                anim.start(card)
+        else:
+            # Hide Prompter
+            if card.height > 0:
+                anim = Animation(height=0, opacity=0, duration=0.3)
+                anim.start(card)
+
+    def go_to_today(self):
+        app = App.get_running_app()
+        if app and app.root:
+             home = app.root.get_screen('home')
+             home.navigate_to('diary')
+             
+             diary = home.ids.content_manager.get_screen('diary')
+             today = datetime.now().strftime("%Y-%m-%d")
+             diary.load_day_into_view(today, animate=False)
+
+    def update_greeting(self):
+        hour = datetime.now().hour
+        if 5 <= hour < 12:
+            greeting = "Good Morning,"
+        elif 12 <= hour < 17:
+            greeting = "Good Afternoon,"
+        elif 17 <= hour < 22:
+            greeting = "Good Evening,"
+        else:
+            greeting = "Good Night,"
+        
+        if 'greeting_label' in self.ids:
+            self.ids.greeting_label.text = greeting
+
+    def populate_recent_entries(self, all_data):
+        if 'recent_list' not in self.ids: return
+        
+        container = self.ids.recent_list
+        container.clear_widgets()
+        
+        # Sort dates descending
+        sorted_dates = sorted(all_data.keys(), reverse=True)
+        
+        # Take top 3
+        top_3 = sorted_dates[:3]
+        
+        if not top_3:
+            # Show a placeholder or just leave empty?
+            # Let's show a "No entries yet" label if empty
+            # But for now, just empty is fine or a specific widget
+            pass
+
+        for date_str in top_3:
+            entry_data = all_data[date_str]
+            # Find the first non-empty answer to preview
+            preview = "No text..."
+            for q, ans in entry_data.items():
+                if ans.strip():
+                    preview = ans.strip()
+                    break
+            
+            # Format Date: "Jan 10"
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+            date_fmt = dt.strftime("%b %d")
+            
+            item = RecentEntryItem()
+            item.date_text = date_fmt
+            item.preview_text = preview
+            item.date_ref = date_str
+            container.add_widget(item)
 
     def calculate_stats(self, all_data):
         # Sort dates
@@ -89,6 +179,18 @@ class HomeDashboard(Screen):
             self.ids.stat_total.value = str(total_entries)
         if 'stat_active' in self.ids:
             self.ids.stat_active.value = most_active_day
+            # Hack to reset text because 'on_value' might not trigger if value is same string
+            # but we want standard behavior for non-numeric.
+            self.ids.stat_active.ids.val_label.text = most_active_day
+
+        # New Stat: Total Words
+        total_words = 0
+        for date_key, questions_dict in all_data.items():
+            for ans in questions_dict.values():
+                total_words += len(ans.split())
+        
+        if 'stat_words' in self.ids:
+            self.ids.stat_words.value = str(total_words)
 
 
 

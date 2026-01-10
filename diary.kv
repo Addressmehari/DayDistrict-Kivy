@@ -101,75 +101,231 @@ WindowManager:
 
 # ... (Previous definitions)
 
+<WriteNowPrompter>:
+    size_hint_y: None
+    height: '0dp' # Default hidden, will animate/set to 70dp if needed
+    opacity: 0
+    padding: [20, 0]
+    canvas.before:
+        Color:
+            rgba: (0.2, 0.6, 0.8, 0.15) # Subtle Blue Tint Background
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [12]
+        Color:
+            rgba: C_ACCENT
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 12)
+            width: 1
+            dash_offset: 5
+            dash_length: 5
+
+    BoxLayout:
+        spacing: 15
+        
+        # Icon Bulb/Pencil
+        Label:
+            text: u"\ue3c9" # Edit pencil
+            font_name: 'assets/MaterialIcons-Regular.ttf'
+            font_size: '28sp'
+            color: C_ACCENT
+            size_hint_x: None
+            width: '40dp'
+            pos_hint: {'center_y': 0.5}
+
+        BoxLayout:
+            orientation: 'vertical'
+            pos_hint: {'center_y': 0.5}
+            spacing: 2
+            
+            Label:
+                text: "How is your day going?"
+                font_size: '16sp'
+                bold: True
+                color: C_TEXT_MAIN
+                text_size: self.size
+                halign: 'left'
+                valign: 'bottom'
+            
+            Label:
+                text: "Tap to write your story..."
+                font_size: '12sp'
+                color: C_ACCENT
+                text_size: self.size
+                halign: 'left'
+                valign: 'top'
+
 <StatCard>:
     orientation: 'vertical'
-    padding: 15
-    spacing: 5
+    padding: [15, 12]
+    spacing: 8
+    size_hint_y: None
+    height: '100dp'
     canvas.before:
+        # --- Stencil Masking Start ---
+        StencilPush
+        
+        # Define the Mask Shape (The Card Body)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16]
+            
+        StencilUse
+        
+        # --- Clipped Content ---
+        # 1. Background
+        Color:
+            rgba: (1, 1, 1, 0.05)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16]
+
+        # 2. The Glow (Now safely clipped)
+        Color:
+            rgba: root.glow_color
+        Ellipse:
+            # Positioned at bottom-right corner, protruding out
+            pos: self.right - 50, self.y - 30
+            size: 130, 130
+            angle_start: 0
+            angle_end: 360
+            
+        # --- Stencil Cleanup ---
+        StencilUnUse
+        
+        # Clear the stencil buffer (Draw mask again)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16]
+            
+        StencilPop
+        # --- Stencil Masking End ---
+
+        # 3. Border Stroke (Drawn on top)
+        Color:
+            rgba: root.stroke_color
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 16)
+            width: 1
+
+    BoxLayout:
+        size_hint_y: None
+        height: '32dp'
+        spacing: 10
+        # Icon wrapper
+        BoxLayout:
+            size_hint_x: None
+            width: '32dp'
+            canvas.before:
+                Color:
+                    rgba: root.accent_color[:3] + [0.2]
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [8]
+            Label:
+                text: root.icon
+                font_name: 'assets/MaterialIcons-Regular.ttf'
+                font_size: '18sp'
+                color: root.accent_color
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+        # Title next to icon
+        Label:
+            text: root.title
+            font_size: '13sp'
+            color: C_TEXT_SEC
+            text_size: self.size
+            halign: 'left'
+            valign: 'middle'
+            bold: True
+
+    Label:
+        id: val_label
+        text: root.value
+        font_size: '28sp'
+        bold: True
+        color: C_TEXT_MAIN
+        text_size: self.size
+        halign: 'left'
+        valign: 'middle'
+
+<RecentEntryItem>:
+    size_hint_y: None
+    height: '60dp'
+    padding: [15, 10]
+    canvas.before:
+        # Card Background
         Color:
             rgba: C_SURFACE
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [12]
-    
-    Label:
-        text: root.icon
-        font_name: 'assets/MaterialIcons-Regular.ttf'
-        font_size: '24sp'
-        color: root.accent_color
-        size_hint_y: None
-        height: '30dp'
-        halign: 'left'
-        text_size: self.size
-
-    Label:
-        text: root.value
-        font_size: '22sp'
-        bold: True
-        color: C_TEXT_MAIN
-        halign: 'left'
-        text_size: self.size
-    
-    Label:
-        text: root.title
-        font_size: '12sp'
-        color: C_TEXT_SEC
-        halign: 'left'
-        text_size: self.size
-
-<RecentEntryItem>:
-    size_hint_y: None
-    height: '60dp'
-    padding: [10, 5]
-    canvas.before:
+            radius: [10]
+        # Subtle Border
         Color:
-            rgba: (1, 1, 1, 0.03) if self.state == 'normal' else (1, 1, 1, 0.08)
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [8]
+            rgba: (1, 1, 1, 0.05)
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+            width: 1
     
     BoxLayout:
-        orientation: 'vertical'
-        spacing: 2
+        spacing: 15
+        
+        # Date Circle / Icon
+        BoxLayout:
+            size_hint_x: None
+            width: '40dp'
+            canvas.before:
+                Color:
+                    rgba: (0.15, 0.17, 0.20, 1) # Darker inner
+                Ellipse:
+                    pos: self.center_x - 20, self.center_y - 20
+                    size: 40, 40
+            
+            Label:
+                text: u"\ue865" # Book icon
+                font_name: 'assets/MaterialIcons-Regular.ttf'
+                font_size: '20sp'
+                color: C_ACCENT
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+        # Content Text
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: 2
+            
+            Label:
+                text: root.date_text
+                font_size: '14sp'
+                bold: True
+                color: C_TEXT_MAIN
+                text_size: self.size
+                halign: 'left'
+                valign: 'bottom'
+            
+            Label:
+                text: root.preview_text
+                font_size: '13sp'
+                color: C_TEXT_SEC
+                text_size: self.size
+                halign: 'left'
+                valign: 'top'
+                shorten: True
+                shorten_from: 'right'
+        
+        # Arrow Right
         Label:
-            text: root.date_text
-            font_size: '13sp'
-            color: C_ACCENT
-            bold: True
-            text_size: self.size
-            halign: 'left'
-            valign: 'middle'
-        Label:
-            text: root.preview_text
-            font_size: '14sp'
-            color: C_TEXT_MAIN
-            text_size: self.size
-            halign: 'left'
-            valign: 'middle'
-            shorten: True
-            shorten_from: 'right'
+            text: u"\ue5cc"
+            font_name: 'assets/MaterialIcons-Regular.ttf'
+            font_size: '20sp'
+            color: (0.3, 0.3, 0.3, 1)
+            size_hint_x: None
+            width: '20dp'
 
 <HeatmapCell>:
     size_hint: (None, None)
@@ -181,6 +337,8 @@ WindowManager:
             pos: self.pos
             size: self.size
             radius: [2]
+
+#:import WriteNowPrompter widgets.WriteNowPrompter
 
 <HomeDashboard>:
     name: "home_tab"
@@ -207,6 +365,7 @@ WindowManager:
                 orientation: 'vertical'
                 spacing: 2
                 Label:
+                    id: greeting_label
                     text: "Good Morning,"
                     font_size: '16sp'
                     color: C_TEXT_SEC
@@ -231,6 +390,11 @@ WindowManager:
                 height: self.minimum_height
                 spacing: 25
                 padding: [0, 10, 0, 80] # Bottom padding for navbar space
+
+                # --- Write Now Prompter ---
+                WriteNowPrompter:
+                    id: write_now_card
+                    on_release: root.go_to_today()
 
                 # --- Heatmap Section ---
                 BoxLayout:
@@ -300,8 +464,9 @@ WindowManager:
                 BoxLayout:
                     orientation: 'vertical'
                     size_hint_y: None
-                    height: '110dp' # Height of cards
+                    height: self.minimum_height # Allow growing for Grid
                     spacing: 10
+                    padding: [0, 10, 0, 0] # Add some top spacing
 
                     Label:
                         text: "Overview"
@@ -312,16 +477,19 @@ WindowManager:
                         text_size: self.size
                         halign: 'left'
                     
-                    BoxLayout:
+                    GridLayout:
+                        cols: 2
                         spacing: 15
+                        size_hint_y: None
+                        height: self.minimum_height
                         
                         StatCard:
                             id: stat_streak
-                            title: "Current Streak"
-                            icon: u"\ue52e" # fire? or timeline?
+                            title: "Streak"
+                            icon: u"\ue52e" # fire
                             value: "0"
                             accent_color: (1.0, 0.6, 0.2, 1) # Orange
-                        
+
                         StatCard:
                             id: stat_total
                             title: "Total Entries"
@@ -330,11 +498,42 @@ WindowManager:
                             accent_color: (0.2, 0.8, 0.2, 1) # Green
 
                         StatCard:
+                            id: stat_words
+                            title: "Total Words"
+                            icon: u"\ue0e5" # sms/comment
+                            value: "0"
+                            accent_color: (0.8, 0.4, 0.8, 1) # Purple
+
+                        StatCard:
                             id: stat_active
-                            title: "Most Active"
+                            title: "Active Day"
                             icon: u"\ue916" # date_range
                             value: "-"
-                            accent_color: (0.4, 0.4, 0.9, 1) # Blue
+                            accent_color: (0.4, 0.5, 1.0, 1) # Blue
+
+                # --- Upcoming / Recent Section ---
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: 10
+                    padding: [0, 10, 0, 0]
+
+                    Label:
+                        text: "Recent Entries"
+                        size_hint_y: None
+                        height: '20dp'
+                        font_size: '14sp'
+                        color: C_TEXT_SEC
+                        text_size: self.size
+                        halign: 'left'
+                    
+                    BoxLayout:
+                        id: recent_list
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: 8
 
 
 

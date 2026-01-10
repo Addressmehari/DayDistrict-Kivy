@@ -1,5 +1,5 @@
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import StringProperty, NumericProperty, ColorProperty
 from kivy.app import App
 from kivy.animation import Animation
@@ -40,6 +40,9 @@ class SwipeBox(BoxLayout):
                         screen.change_day(1, direction='left')
                     return True
         return False
+
+class WriteNowPrompter(ButtonBehavior, BoxLayout):
+    pass
 
 class DiaryEntryItemCard(ButtonBehavior, BoxLayout):
     question = StringProperty("")
@@ -98,6 +101,39 @@ class StatCard(BoxLayout):
     icon = StringProperty("")
     # Accent color for the icon/stats
     accent_color = ColorProperty((0.345, 0.651, 1.0, 1)) 
+    stroke_color = ColorProperty((0, 0, 0, 0))
+    glow_color = ColorProperty((0, 0, 0, 0))
+
+    def on_accent_color(self, instance, value):
+        # Calculate derived colors
+        # Stroke: darker version (50%) + 0.3 alpha
+        self.stroke_color = (value[0]*0.5, value[1]*0.5, value[2]*0.5, 0.3)
+        # Glow: normal color + 0.1 alpha
+        self.glow_color = (value[0], value[1], value[2], 0.1)
+
+    def on_value(self, instance, new_value):
+        # animate check: if numeric, animate
+        # We strip non-numeric chars for animation logic if needed, 
+        # but for simplicity, we'll try to animate if it's a pure number.
+        try:
+            target = int(new_value)
+            self._animate_value(target)
+        except ValueError:
+            pass # Not a number (e.g. "Mon"), just set it normally (KV binding does this)
+
+    def _animate_value(self, target):
+        self.current_anim_val = 0
+        anim = Animation(current_anim_val=target, duration=1.5, t='out_expo')
+        anim.start(self)
+
+    current_anim_val = NumericProperty(0)
+    
+    def on_current_anim_val(self, instance, val):
+        # Update the display text only while animating if the final target was numeric
+        # This might conflict with the string bound 'value'.
+        # Solution: Use a separate display property or just formatting logic.
+        # Simpler approach: We update a separate property 'display_text'
+        self.ids.val_label.text = str(int(val)) 
 
 class RecentEntryItem(ButtonBehavior, BoxLayout):
     date_text = StringProperty("")
