@@ -9,7 +9,7 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from diary_manager import DiaryManager
-from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell, TagChip, ChecklistItem
+from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell, TagChip, ChecklistItem, SearchResultItem
 from datetime import datetime, timedelta
 from map_screen import CityMapScreen
 
@@ -194,7 +194,57 @@ class HomeDashboard(Screen):
         if 'stat_words' in self.ids:
             self.ids.stat_words.value = str(total_words)
 
-
+    def perform_search(self, query):
+        dashboard = self.ids.dashboard_content
+        results_container = self.ids.search_results_content
+        results_list = self.ids.search_results_list
+        
+        # Hide Dashboard, Show Results
+        dashboard.opacity = 0
+        dashboard.height = 0
+        dashboard.disabled = True
+        dashboard.size_hint_y = None # Ensure it doesn't take space
+        
+        results_container.opacity = 1
+        results_container.disabled = False
+        results_container.size_hint_y = None
+        results_container.bind(minimum_height=results_container.setter('height')) # Auto grow
+        
+        # We need to explicitly trigger layout update or wait for next frame
+        # But setting opacity and height=0 usually works for BoxLayout vertical.
+        
+        # Reset visual state of dashboard
+        if not query.strip():
+            dashboard.opacity = 1
+            dashboard.size_hint_y = None
+            dashboard.bind(minimum_height=dashboard.setter('height'))
+            dashboard.disabled = False
+            
+            results_container.opacity = 0
+            results_container.height = 0
+            results_container.disabled = True
+            return
+        
+        # Perform Search
+        matches = dm.search_entries(query)
+        
+        results_list.clear_widgets()
+        
+        if not matches:
+             # Show "No results" label?
+             # For now just empty list
+             pass
+             
+        for m in matches:
+            dt = datetime.strptime(m['date'], "%Y-%m-%d")
+            date_fmt = dt.strftime("%b %d, %Y")
+            
+            item = SearchResultItem()
+            item.date_text = date_fmt
+            item.question_text = m['question']
+            item.match_text = m['answer']
+            item.date_ref = m['date']
+            results_list.add_widget(item)
 
     def populate_heatmap(self, all_data):
         heatmap = self.ids.heatmap_container
@@ -686,7 +736,7 @@ class TagFilterModal(ModalView):
         super().__init__(**kwargs)
         self.current_filters = list(current_filters)
         self.callback = callback
-        self.size_hint = (0.85, 0.6)
+        self.size_hint = (0.8, 0.5)
         self.background_color = (0,0,0,0.5)
         Clock.schedule_once(self.build_ui, 0)
         
@@ -843,7 +893,7 @@ class TagSelectionModal(ModalView):
         super().__init__(**kwargs)
         self.date_str = date_str
         self.current_tags = list(current_tags) # Copy
-        self.size_hint = (0.85, 0.6)
+        self.size_hint = (0.8, 0.5)
         self.background_color = (0,0,0,0.5)
         Clock.schedule_once(self.build_ui, 0)
         

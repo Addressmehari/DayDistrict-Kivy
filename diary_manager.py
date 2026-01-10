@@ -254,3 +254,31 @@ class DiaryManager:
         if tag_text in tags:
             tags.remove(tag_text)
             self.save_global_tags(tags)
+
+    def search_entries(self, query):
+        """
+        Search for query string in all answers.
+        Returns a list of dicts: [{'date': '2025-01-01', 'question': '...', 'answer': '...'}, ...]
+        """
+        query = query.lower().strip()
+        if not query:
+            return []
+            
+        all_data = self.get_all_entries()
+        results = []
+        
+        for date_str, entries in all_data.items():
+            # Check matches in answers
+            for q, ans in entries.items():
+                if q == "tags": continue # Skip checking tags for now, or maybe include them?
+                
+                if isinstance(ans, str) and query in ans.lower():
+                    results.append({
+                        'date': date_str,
+                        'question': q,
+                        'answer': ans
+                    })
+        
+        # Sort by date descending
+        results.sort(key=lambda x: x['date'], reverse=True)
+        return results

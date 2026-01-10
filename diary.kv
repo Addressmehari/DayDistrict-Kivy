@@ -65,7 +65,59 @@ WindowManager:
 #:import RecentEntryItem widgets.RecentEntryItem
 #:import HeatmapCell widgets.HeatmapCell
 #:import CalendarViewScreen screens.CalendarViewScreen
+#:import SearchResultItem widgets.SearchResultItem
 #:import CalendarDayCell widgets.CalendarDayCell
+
+<SearchResultItem>:
+    size_hint_y: None
+    height: '70dp'
+    padding: [15, 10]
+    canvas.before:
+        Color:
+            rgba: C_SURFACE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+        Color:
+            rgba: C_BORDER
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
+            width: 1
+    
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 4
+        
+        BoxLayout:
+            spacing: 10
+            Label:
+                text: root.date_text
+                font_size: '13sp'
+                bold: True
+                color: C_ACCENT
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: 'left'
+            
+            Label:
+                text: root.question_text
+                font_size: '12sp'
+                color: C_TEXT_SEC
+                halign: 'left'
+                text_size: self.size
+                shorten: True
+                shorten_from: 'right'
+
+        Label:
+            text: root.match_text
+            font_size: '14sp'
+            color: C_TEXT_MAIN
+            halign: 'left'
+            valign: 'top'
+            text_size: self.size
+            shorten: True
+            shorten_from: 'right'
 
 <NavButton>:
     orientation: 'vertical'
@@ -358,30 +410,64 @@ WindowManager:
                 pos: self.pos
                 size: self.size
 
-        # --- Header ---
+        # --- Fixed Header Area (Greeting + Search) ---
         BoxLayout:
+            orientation: 'vertical'
             size_hint_y: None
-            height: '60dp'
-            orientation: 'horizontal'
+            height: '115dp' # 60 + 45 + spacing roughly
+            spacing: 10
             
+            # --- Greeting Header ---
             BoxLayout:
-                orientation: 'vertical'
-                spacing: 2
-                Label:
-                    id: greeting_label
-                    text: "Good Morning,"
-                    font_size: '16sp'
-                    color: C_TEXT_SEC
-                    text_size: self.size
-                    halign: 'left'
-                Label:
-                    text: root.date_display
-                    font_size: '24sp'
-                    bold: True
-                    color: C_TEXT_MAIN
-                    text_size: self.size
-                    halign: 'left'
+                size_hint_y: None
+                height: '60dp'
+                orientation: 'horizontal'
+                
+                BoxLayout:
+                    orientation: 'vertical'
+                    spacing: 2
+                    Label:
+                        id: greeting_label
+                        text: "Good Morning,"
+                        font_size: '16sp'
+                        color: C_TEXT_SEC
+                        text_size: self.size
+                        halign: 'left'
+                    Label:
+                        text: root.date_display
+                        font_size: '24sp'
+                        bold: True
+                        color: C_TEXT_MAIN
+                        text_size: self.size
+                        halign: 'left'
 
+            # --- Search Bar ---
+            BoxLayout:
+                size_hint_y: None
+                height: '45dp'
+                padding: [0, 0]
+                
+                TextInput:
+                    id: search_input
+                    hint_text: "Search entries..."
+                    hint_text_color: C_TEXT_SEC
+                    multiline: False
+                    background_normal: ''
+                    background_active: ''
+                    background_color: C_SURFACE
+                    foreground_color: C_TEXT_MAIN
+                    cursor_color: C_ACCENT
+                    padding: [15, 12]
+                    font_size: '15sp'
+                    on_text: root.perform_search(self.text)
+                    canvas.after:
+                        Color:
+                            rgba: C_BORDER
+                        Line:
+                            rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
+                            width: 1
+
+        # --- Scrollable Content (Dashboard / Results) ---
         ScrollView:
             do_scroll_x: False
             do_scroll_y: True
@@ -391,152 +477,190 @@ WindowManager:
                 orientation: 'vertical'
                 size_hint_y: None
                 height: self.minimum_height
-                spacing: 25
+                spacing: 20
                 padding: [0, 10, 0, 80] # Bottom padding for navbar space
-
-                # --- Write Now Prompter ---
-                WriteNowPrompter:
-                    id: write_now_card
-                    on_release: root.go_to_today()
-
-                # --- Heatmap Section ---
+                
+                # --- Dashboard Content ---
                 BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: '140dp'
-                    spacing: 10
-                    
-                    BoxLayout:
-                        size_hint_y: None
-                        height: '30dp'
-                        spacing: 10
-                        
-                        Label:
-                            text: "Entry Graph"
-                            font_size: '14sp'
-                            color: C_TEXT_SEC
-                            size_hint_x: 1
-                            halign: 'left'
-                            text_size: self.size
-                            valign: 'middle'
-
-                        BoxLayout:
-                            size_hint_x: None
-                            width: '120dp'
-                            spacing: 5
-                            
-                            Button: # Prev Year
-                                text: "<"
-                                on_release: root.change_heatmap_year(-1)
-                                size_hint_x: None
-                                width: '30dp'
-                                background_color: 0,0,0,0
-                                color: C_ACCENT
-                                bold: True
-                            
-                            Label:
-                                text: str(root.heatmap_year)
-                                color: C_TEXT_MAIN
-                                bold: True
-                            
-                            Button: # Next Year
-                                text: ">"
-                                on_release: root.change_heatmap_year(1)
-                                size_hint_x: None
-                                width: '30dp'
-                                background_color: 0,0,0,0
-                                color: C_ACCENT
-                                bold: True
-
-                    ScrollView:
-                        do_scroll_x: True
-                        do_scroll_y: False
-                        size_hint_y: None
-                        height: '110dp'
-                        bar_width: 0
-                        
-                        BoxLayout:
-                            id: heatmap_container
-                            orientation: 'horizontal'
-                            size_hint_x: None
-                            width: self.minimum_width
-                            spacing: 4
-                            padding: [5, 5]
-
-                # --- Stats Section ---
-                BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: self.minimum_height # Allow growing for Grid
-                    spacing: 10
-                    padding: [0, 10, 0, 0] # Add some top spacing
-
-                    Label:
-                        text: "Overview"
-                        size_hint_y: None
-                        height: '20dp'
-                        font_size: '14sp'
-                        color: C_TEXT_SEC
-                        text_size: self.size
-                        halign: 'left'
-                    
-                    GridLayout:
-                        cols: 2
-                        spacing: 15
-                        size_hint_y: None
-                        height: self.minimum_height
-                        
-                        StatCard:
-                            id: stat_streak
-                            title: "Streak"
-                            icon: u"\ue52e" # fire
-                            value: "0"
-                            accent_color: (1.0, 0.6, 0.2, 1) # Orange
-
-                        StatCard:
-                            id: stat_total
-                            title: "Total Entries"
-                            icon: u"\ue865" # book
-                            value: "0"
-                            accent_color: (0.2, 0.8, 0.2, 1) # Green
-
-                        StatCard:
-                            id: stat_words
-                            title: "Total Words"
-                            icon: u"\ue0e5" # sms/comment
-                            value: "0"
-                            accent_color: (0.8, 0.4, 0.8, 1) # Purple
-
-                        StatCard:
-                            id: stat_active
-                            title: "Active Day"
-                            icon: u"\ue916" # date_range
-                            value: "-"
-                            accent_color: (0.4, 0.5, 1.0, 1) # Blue
-
-                # --- Upcoming / Recent Section ---
-                BoxLayout:
+                    id: dashboard_content
                     orientation: 'vertical'
                     size_hint_y: None
                     height: self.minimum_height
-                    spacing: 10
-                    padding: [0, 10, 0, 0]
+                    spacing: 25
+                    padding: [0, 10, 0, 80]
+                    opacity: 1
 
-                    Label:
-                        text: "Recent Entries"
-                        size_hint_y: None
-                        height: '20dp'
-                        font_size: '14sp'
-                        color: C_TEXT_SEC
-                        text_size: self.size
-                        halign: 'left'
-                    
+                    # --- Write Now Prompter ---
+                    WriteNowPrompter:
+                        id: write_now_card
+                        on_release: root.go_to_today()
+
+                    # --- Heatmap Section ---
                     BoxLayout:
-                        id: recent_list
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: '140dp'
+                        spacing: 10
+                        
+                        BoxLayout:
+                            size_hint_y: None
+                            height: '30dp'
+                            spacing: 10
+                            
+                            Label:
+                                text: "Entry Graph"
+                                font_size: '14sp'
+                                color: C_TEXT_SEC
+                                size_hint_x: 1
+                                halign: 'left'
+                                text_size: self.size
+                                valign: 'middle'
+
+                            BoxLayout:
+                                size_hint_x: None
+                                width: '120dp'
+                                spacing: 5
+                                
+                                Button: # Prev Year
+                                    text: "<"
+                                    on_release: root.change_heatmap_year(-1)
+                                    size_hint_x: None
+                                    width: '30dp'
+                                    background_color: 0,0,0,0
+                                    color: C_ACCENT
+                                    bold: True
+                                
+                                Label:
+                                    text: str(root.heatmap_year)
+                                    color: C_TEXT_MAIN
+                                    bold: True
+                                
+                                Button: # Next Year
+                                    text: ">"
+                                    on_release: root.change_heatmap_year(1)
+                                    size_hint_x: None
+                                    width: '30dp'
+                                    background_color: 0,0,0,0
+                                    color: C_ACCENT
+                                    bold: True
+
+                        ScrollView:
+                            do_scroll_x: True
+                            do_scroll_y: False
+                            size_hint_y: None
+                            height: '110dp'
+                            bar_width: 0
+                            
+                            BoxLayout:
+                                id: heatmap_container
+                                orientation: 'horizontal'
+                                size_hint_x: None
+                                width: self.minimum_width
+                                spacing: 4
+                                padding: [5, 5]
+
+                    # --- Stats Section ---
+                    BoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height # Allow growing for Grid
+                        spacing: 10
+                        padding: [0, 10, 0, 0] # Add some top spacing
+
+                        Label:
+                            text: "Overview"
+                            size_hint_y: None
+                            height: '20dp'
+                            font_size: '14sp'
+                            color: C_TEXT_SEC
+                            text_size: self.size
+                            halign: 'left'
+                        
+                        GridLayout:
+                            cols: 2
+                            spacing: 15
+                            size_hint_y: None
+                            height: self.minimum_height
+                            
+                            StatCard:
+                                id: stat_streak
+                                title: "Streak"
+                                icon: u"\ue52e" # fire
+                                value: "0"
+                                accent_color: (1.0, 0.6, 0.2, 1) # Orange
+
+                            StatCard:
+                                id: stat_total
+                                title: "Total Entries"
+                                icon: u"\ue865" # book
+                                value: "0"
+                                accent_color: (0.2, 0.8, 0.2, 1) # Green
+
+                            StatCard:
+                                id: stat_words
+                                title: "Total Words"
+                                icon: u"\ue0e5" # sms/comment
+                                value: "0"
+                                accent_color: (0.8, 0.4, 0.8, 1) # Purple
+
+                            StatCard:
+                                id: stat_active
+                                title: "Active Day"
+                                icon: u"\ue916" # date_range
+                                value: "-"
+                                accent_color: (0.4, 0.5, 1.0, 1) # Blue
+
+                    # --- Upcoming / Recent Section ---
+                    BoxLayout:
                         orientation: 'vertical'
                         size_hint_y: None
                         height: self.minimum_height
-                        spacing: 8
+                        spacing: 10
+                        padding: [0, 10, 0, 0]
+
+                        Label:
+                            text: "Recent Entries"
+                            size_hint_y: None
+                            height: '20dp'
+                            font_size: '14sp'
+                            color: C_TEXT_SEC
+                            text_size: self.size
+                            halign: 'left'
+                        
+                        BoxLayout:
+                            id: recent_list
+                            orientation: 'vertical'
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: 8
+            
+                # --- Search Results Container ---
+                BoxLayout:
+                    id: search_results_content
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: 0
+                    opacity: 0
+                    spacing: 10
+                    padding: [0, 10, 0, 80]
+                    disabled: True
+                    
+                    Label:
+                        text: "Search Results"
+                        size_hint_y: None
+                        height: '30dp'
+                        font_size: '16sp'
+                        color: C_TEXT_SEC
+                        halign: 'left'
+                        text_size: self.size
+                        bold: True
+
+                    BoxLayout:
+                        id: search_results_list
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: 10
 
 
 
@@ -682,7 +806,7 @@ WindowManager:
                 GhostButton:
                     text: u"\ue54e" # 'local_offer' tag icon
                     font_name: 'assets/MaterialIcons-Regular.ttf'
-                    font_size: '28sp'
+                    font_size: '22sp'
                     size_hint_x: 0.5
                     color: C_TEXT_SEC
                     on_release: 
@@ -693,7 +817,7 @@ WindowManager:
                 GhostButton:
                     text: u"\ue3c9" # Material Icon 'edit'
                     font_name: 'assets/MaterialIcons-Regular.ttf'
-                    font_size: '28sp'
+                    font_size: '22sp'
                     size_hint_x: 0.5
                     color: C_TEXT_SEC
                     on_release:

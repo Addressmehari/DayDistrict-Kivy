@@ -224,3 +224,18 @@ class ChecklistItem(ButtonBehavior, BoxLayout):
 
     def on_toggle(self, text, val):
         pass
+
+class SearchResultItem(ButtonBehavior, BoxLayout):
+    date_text = StringProperty("")
+    question_text = StringProperty("")
+    match_text = StringProperty("")
+    date_ref = StringProperty("")
+    
+    def on_release(self):
+        # Navigate to diary entry
+        app = App.get_running_app()
+        if app and app.root:
+            home = app.root.get_screen('home')
+            home.navigate_to('diary')
+            diary = home.ids.content_manager.get_screen('diary')
+            diary.load_day_into_view(self.date_ref, animate=False)
