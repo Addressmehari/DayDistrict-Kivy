@@ -246,6 +246,11 @@ class HomeDashboard(Screen):
             item.date_ref = m['date']
             results_list.add_widget(item)
 
+    def change_heatmap_year(self, offset):
+        self.heatmap_year += offset
+        all_data = dm.get_all_entries()
+        self.populate_heatmap(all_data)
+
     def populate_heatmap(self, all_data):
         heatmap = self.ids.heatmap_container
         heatmap.clear_widgets()
