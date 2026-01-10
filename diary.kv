@@ -56,6 +56,10 @@ WindowManager:
 #:import NavButton widgets.NavButton
 #:import BottomNavBar widgets.BottomNavBar
 #:import PlaceholderDisplay screens.PlaceholderDisplay
+#:import HomeDashboard screens.HomeDashboard
+#:import StatCard widgets.StatCard
+#:import RecentEntryItem widgets.RecentEntryItem
+#:import HeatmapCell widgets.HeatmapCell
 
 <NavButton>:
     orientation: 'vertical'
@@ -92,6 +96,212 @@ WindowManager:
             color: C_TEXT_SEC
             font_size: '20sp'
 
+# ... (Previous definitions)
+
+<StatCard>:
+    orientation: 'vertical'
+    padding: 15
+    spacing: 5
+    canvas.before:
+        Color:
+            rgba: C_SURFACE
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [12]
+    
+    Label:
+        text: root.icon
+        font_name: 'assets/MaterialIcons-Regular.ttf'
+        font_size: '24sp'
+        color: root.accent_color
+        size_hint_y: None
+        height: '30dp'
+        halign: 'left'
+        text_size: self.size
+
+    Label:
+        text: root.value
+        font_size: '22sp'
+        bold: True
+        color: C_TEXT_MAIN
+        halign: 'left'
+        text_size: self.size
+    
+    Label:
+        text: root.title
+        font_size: '12sp'
+        color: C_TEXT_SEC
+        halign: 'left'
+        text_size: self.size
+
+<RecentEntryItem>:
+    size_hint_y: None
+    height: '60dp'
+    padding: [10, 5]
+    canvas.before:
+        Color:
+            rgba: (1, 1, 1, 0.03) if self.state == 'normal' else (1, 1, 1, 0.08)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+    
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 2
+        Label:
+            text: root.date_text
+            font_size: '13sp'
+            color: C_ACCENT
+            bold: True
+            text_size: self.size
+            halign: 'left'
+            valign: 'middle'
+        Label:
+            text: root.preview_text
+            font_size: '14sp'
+            color: C_TEXT_MAIN
+            text_size: self.size
+            halign: 'left'
+            valign: 'middle'
+            shorten: True
+            shorten_from: 'right'
+
+<HeatmapCell>:
+    size_hint: (None, None)
+    size: (12, 12)
+    canvas.before:
+        Color:
+            rgba: root.color_val
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [2]
+
+<HomeDashboard>:
+    name: "home_tab"
+    today_date: ""
+    
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [20, 20, 20, 20]
+        spacing: 20
+        canvas.before:
+            Color:
+                rgba: C_BG
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        # --- Header ---
+        BoxLayout:
+            size_hint_y: None
+            height: '60dp'
+            orientation: 'horizontal'
+            
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: 2
+                Label:
+                    text: "Good Morning,"
+                    font_size: '16sp'
+                    color: C_TEXT_SEC
+                    text_size: self.size
+                    halign: 'left'
+                Label:
+                    text: root.date_display
+                    font_size: '24sp'
+                    bold: True
+                    color: C_TEXT_MAIN
+                    text_size: self.size
+                    halign: 'left'
+
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            bar_width: 0
+            
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: 25
+                padding: [0, 10, 0, 80] # Bottom padding for navbar space
+
+                # --- Heatmap Section ---
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: '140dp'
+                    spacing: 10
+                    
+                    Label:
+                        text: "Contribution Graph"
+                        size_hint_y: None
+                        height: '20dp'
+                        font_size: '14sp'
+                        color: C_TEXT_SEC
+                        text_size: self.size
+                        halign: 'left'
+
+                    ScrollView:
+                        do_scroll_x: True
+                        do_scroll_y: False
+                        size_hint_y: None
+                        height: '110dp'
+                        bar_width: 0
+                        
+                        BoxLayout:
+                            id: heatmap_container
+                            orientation: 'horizontal'
+                            size_hint_x: None
+                            width: self.minimum_width
+                            spacing: 4
+                            padding: [5, 5]
+
+                # --- Stats Section ---
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: '110dp' # Height of cards
+                    spacing: 10
+
+                    Label:
+                        text: "Overview"
+                        size_hint_y: None
+                        height: '20dp'
+                        font_size: '14sp'
+                        color: C_TEXT_SEC
+                        text_size: self.size
+                        halign: 'left'
+                    
+                    BoxLayout:
+                        spacing: 15
+                        
+                        StatCard:
+                            id: stat_streak
+                            title: "Current Streak"
+                            icon: u"\ue52e" # fire? or timeline?
+                            value: "0"
+                            accent_color: (1.0, 0.6, 0.2, 1) # Orange
+                        
+                        StatCard:
+                            id: stat_total
+                            title: "Total Entries"
+                            icon: u"\ue865" # book
+                            value: "0"
+                            accent_color: (0.2, 0.8, 0.2, 1) # Green
+
+                        StatCard:
+                            id: stat_active
+                            title: "Most Active"
+                            icon: u"\ue916" # date_range
+                            value: "-"
+                            accent_color: (0.4, 0.4, 0.9, 1) # Blue
+
+
+
 <HomeScreen>:
     name: "home"
     
@@ -108,9 +318,8 @@ WindowManager:
         ScreenManager:
             id: content_manager
             
-            PlaceholderDisplay:
-                name: "home_tab"
-                text: "Home Dashboard\n(Coming Soon)"
+            HomeDashboard:
+                id: home_tab_screen
             
             PlaceholderDisplay:
                 name: "map_tab"

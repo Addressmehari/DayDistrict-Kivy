@@ -1,7 +1,9 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.behaviors import ButtonBehavior
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, NumericProperty, ColorProperty
 from kivy.app import App
+from kivy.animation import Animation
+from kivy.uix.behaviors import ToggleButtonBehavior
 # Note: DetailScreen logic is invoked via App.get_running_app() which is resolved at runtime.
 
 class SwipeBox(BoxLayout):
@@ -57,10 +59,6 @@ class QuestionEditItem(BoxLayout):
     def remove(self):
         pass
 
-from kivy.uix.behaviors import ToggleButtonBehavior
-from kivy.animation import Animation
-from kivy.properties import NumericProperty
-
 class NavButton(ToggleButtonBehavior, BoxLayout):
     icon_type = StringProperty("home")
     icon_size = NumericProperty(28) # Base size
@@ -91,3 +89,39 @@ class NavButton(ToggleButtonBehavior, BoxLayout):
 
 class BottomNavBar(BoxLayout):
     pass
+
+# --- Dashboard Widgets ---
+
+class StatCard(BoxLayout):
+    title = StringProperty("")
+    value = StringProperty("")
+    icon = StringProperty("")
+    # Accent color for the icon/stats
+    accent_color = ColorProperty((0.345, 0.651, 1.0, 1)) 
+
+class RecentEntryItem(ButtonBehavior, BoxLayout):
+    date_text = StringProperty("")
+    preview_text = StringProperty("")
+    date_ref = StringProperty("") # YYYY-MM-DD
+    
+    def on_release(self):
+        app = App.get_running_app()
+        # Navigate to diary and load this date
+        if app and app.root:
+             # We need to access get_diary helper or manually traverse
+             home = app.root.get_screen('home')
+             diary = home.ids.content_manager.get_screen('diary')
+             
+             # Switch to diary tab
+             home.navigate_to('diary')
+             # Force load date
+             diary.load_day_into_view(self.date_ref, animate=False)
+
+
+class HeatmapCell(ButtonBehavior, BoxLayout):
+    color_val = ColorProperty((0.15, 0.17, 0.20, 1)) # Default empty cell
+    date_ref = StringProperty("")
+    
+    def on_release(self):
+        # Navigation disabled as per user request
+        pass

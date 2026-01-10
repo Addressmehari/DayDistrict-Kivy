@@ -98,11 +98,26 @@ class DiaryManager:
 
     def overwrite_entry_schema(self, date_str, questions_list):
         """
-        Erases answers for the given date and initializes provided questions with empty answers.
-        Equivalent to 'Apply for today only'.
+        Overwrites the questions for a specific day while trying to preserve answers.
         """
-        new_data = {q: "" for q in questions_list}
+        current_data = self.load_entry(date_str)
+        new_data = {}
+        for q in questions_list:
+            new_data[q] = current_data.get(q, "")
         self.save_entry(date_str, new_data)
+
+    def get_all_entries(self):
+        """
+        Returns the entire dictionary of entries {date_str: {question: answer}}.
+        """
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r") as f:
+                    return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+        return {}
+
 
     def load_questions_for_date(self, date_str):
         """

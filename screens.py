@@ -9,8 +9,8 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from diary_manager import DiaryManager
-from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton
-from datetime import datetime
+from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell
+from datetime import datetime, timedelta
 
 # Initialize Data Manager
 dm = DiaryManager()
@@ -21,6 +21,284 @@ class WindowManager(ScreenManager):
 # ... imports
 
 # ...
+
+class HomeDashboard(Screen):
+    date_display = StringProperty("")
+    
+    def on_enter(self, *args):
+        self.date_display = datetime.now().strftime("%A, %d %B")
+        # Schedule update to ensure KV ids are populated
+        Clock.schedule_once(lambda dt: self.update_view(), 0)
+
+    def update_view(self):
+        # 1. Fetch Data
+        all_data = dm.get_all_entries()
+        
+        # 2. Update Stats
+        self.calculate_stats(all_data)
+        
+        # 3. Heatmap
+        self.populate_heatmap(all_data)
+
+    def calculate_stats(self, all_data):
+        # Sort dates
+        sorted_dates = sorted(all_data.keys())
+        total_entries = len(all_data)
+        
+        # Streak
+        streak = 0
+        if sorted_dates:
+            today = datetime.now().date()
+            # Check backwards from today or yesterday
+            # Convert keys to date objs
+            dates_set = {datetime.strptime(d, "%Y-%m-%d").date() for d in sorted_dates}
+            
+            check_date = today
+            if check_date not in dates_set:
+                # If no entry today, check if streak ended yesterday
+                check_date = today - timedelta(days=1)
+            
+            while check_date in dates_set:
+                streak += 1
+                check_date -= timedelta(days=1)
+
+        # Most Active Day
+        # Count entries per weekday
+        weekday_counts = {i: 0 for i in range(7)}
+        for d_str in all_data:
+            dt = datetime.strptime(d_str, "%Y-%m-%d")
+            weekday_counts[dt.weekday()] += 1
+        
+        most_active_idx = max(weekday_counts, key=weekday_counts.get)
+        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        most_active_day = days[most_active_idx] if total_entries > 0 else "N/A"
+
+        # Update Stat Cards
+        # We assume IDs are accessbile. We'll define them in KV.
+        if 'stat_streak' in self.ids:
+            self.ids.stat_streak.value = str(streak)
+        if 'stat_total' in self.ids:
+            self.ids.stat_total.value = str(total_entries)
+        if 'stat_active' in self.ids:
+            self.ids.stat_active.value = most_active_day
+
+
+
+    def populate_heatmap(self, all_data):
+        heatmap = self.ids.heatmap_container
+        heatmap.clear_widgets()
+        
+        # Structure:
+        # We need a Main horizontal box.
+        # Left: Day Labels (Mon, Wed, Fri)
+        # Right: Content (Months + Grid)
+        
+        # 1. Main Container (already cleared 'heatmap_container')
+        # We assume heatmap_container is a BoxLayout (horizontal).
+        
+        # --- Left Column: Day Labels ---
+        # Align with grid (which starts 20px down due to header) -> Top padding 20
+        day_labels = BoxLayout(orientation='vertical', size_hint_x=None, width=30, spacing=4, padding=[0, 20, 0, 0])
+        
+        days_map = {1: "Mon", 3: "Wed", 5: "Fri"}
+        for i in range(7):
+            txt = days_map.get(i, "")
+            # Height must match cell height (12) to stay in sync with grid pitch (12+4=16)
+            lbl = Label(text=txt, font_size='10sp', color=(0.5,0.5,0.5,1), size_hint_y=None, height=12) 
+            day_labels.add_widget(lbl)
+            
+        heatmap.add_widget(day_labels)
+        
+        # --- Right Column: Months + Grid ---
+        right_col = BoxLayout(orientation='vertical', size_hint_x=None, spacing=5)
+        # This column width will grow as we add weeks.
+        
+        # Top: Month Labels
+        # We need to pre-calculate where months start to place labels correctly.
+        # However, a simpler way for standard scrolling is a horizontal layout for months 
+        # matching the week columns.
+        
+        # Grid Container
+        grid_box = BoxLayout(orientation='horizontal', spacing=4, size_hint_x=None)
+        
+        today = datetime.now().date()
+        # Strictly start from Jan 1st of CURRENT YEAR (or specific year if desired, e.g. 2026)
+        current_year = today.year
+        start_date = datetime(current_year, 1, 1).date()
+        
+        # We need to render from Jan 1st until at least today, or full year?
+        # Let's render Full Year (or until today + some buffer).
+        # GitHub usually shows fixed 52 weeks or full calendar year.
+        # Let's show full year 2026.
+        end_date = datetime(current_year, 12, 31).date()
+        
+        # Calculate how many weeks roughly needed.
+        # But we build dynamically:
+        # Week 1 might be partial (if Jan 1 is Thursday).
+        # We need to fill the first column with empty cells until Thursday.
+        
+        # Weekday of Jan 1st: Mon=0 ... Sun=6
+        # If visual row 0 is Mon, then index matches weekday().
+        # If visual row 0 is Sun, then index = (weekday() + 1) % 7.
+        # Let's stick to standard GitHub visual: Row 0 = Sunday.
+        jan1_weekday_idx = (start_date.weekday() + 1) % 7
+        
+        current = start_date
+        # We need to iterate weeks.
+        
+        # But iterating by weeks is tricky if we want exact year boundaries.
+        # Easier: Iterate days and pack into columns.
+        
+        # Initialize first week column
+        current_week_col = BoxLayout(orientation='vertical', spacing=4, size_hint_x=None, width=16)
+        
+        # Pad beginning of first week if Jan 1 is not Sunday
+        for _ in range(jan1_weekday_idx):
+            # Empty invisible widget
+            empty = HeatmapCell() # Use cell for sizing
+            empty.opacity = 0 # Invisible
+            current_week_col.add_widget(empty)
+            
+        day_in_week_count = jan1_weekday_idx
+        
+        month_labels = [] # (Month Name, Column Index)
+        last_month = None
+        # Track X position for labels
+        current_x_pos = 0 # PIXELS
+        month_start_x = 0
+        
+        # Loop strictly through the year
+        while current <= end_date:
+            # Check Month Change
+            m = current.strftime("%b")
+            
+            if m != last_month:
+                if last_month is not None:
+                    # Month Changed!
+                    # 1. Finish previous month's column if partially filled
+                    if day_in_week_count > 0:
+                        # Fill rest with empty
+                        for _ in range(7 - day_in_week_count):
+                            empty = HeatmapCell()
+                            empty.opacity = 0
+                            current_week_col.add_widget(empty)
+                        grid_box.add_widget(current_week_col)
+                        current_x_pos += 20 # 16 width + 4 spacing
+                        # Reset for new column
+                        current_week_col = BoxLayout(orientation='vertical', spacing=4, size_hint_x=None, width=16)
+                        day_in_week_count = 0
+                    
+                    # Store Label for Previous Month (centered)
+                    width = current_x_pos - month_start_x
+                    center_x = month_start_x + (width / 2)
+                    month_labels.append((last_month, center_x))
+
+                    # 2. Add Gap (Spacer)
+                    grid_box.add_widget(BoxLayout(size_hint_x=None, width=8)) # Gap
+                    current_x_pos += 12 # 8 width + 4 spacing
+                    
+                    month_start_x = current_x_pos # Start of new month
+                
+                last_month = m
+                
+                # If we just started a new month, we need to pad the column to the correct weekday again?
+                # Leetcode style: Does next month start at top?
+                # Or does it continue flow?
+                # User said: "if the month ends on the friday or in between week just small gap and staw next"
+                # This implies: Break the week, start new column for new month.
+                # But we must respect the weekday alignment (rows are Mon-Sun).
+                # If we break column, next column starts at row 0 (Sunday).
+                # So we must pad empty cells until the weekday of 'current' date.
+                
+                # Pad for new month start
+                weekday_idx = (current.weekday() + 1) % 7
+                # If we are in a fresh column (day_in_week_count == 0), we pad.
+                # If we just finished a column above, day_in_week_count is 0.
+                for _ in range(weekday_idx):
+                    empty = HeatmapCell()
+                    empty.opacity = 0
+                    current_week_col.add_widget(empty)
+                day_in_week_count = weekday_idx
+
+            # --- Cell Logic ---
+            date_str = current.strftime("%Y-%m-%d")
+            answers = all_data.get(date_str, {})
+            char_count = sum(len(v) for v in answers.values())
+            color = self.get_color_for_activity(char_count)
+            
+            cell = HeatmapCell()
+            cell.color_val = color
+            cell.date_ref = date_str
+            
+            current_week_col.add_widget(cell)
+            day_in_week_count += 1
+            
+            # If week full (7 days), push column and start new
+            if day_in_week_count == 7:
+                grid_box.add_widget(current_week_col)
+                current_x_pos += 20 # 16 + 4
+                current_week_col = BoxLayout(orientation='vertical', spacing=4, size_hint_x=None, width=16)
+                day_in_week_count = 0
+            
+            current += timedelta(days=1)
+            
+        # Finish last week if partial
+        if day_in_week_count > 0:
+            for _ in range(7 - day_in_week_count):
+                empty = HeatmapCell()
+                empty.opacity = 0
+                current_week_col.add_widget(empty)
+            grid_box.add_widget(current_week_col)
+            current_x_pos += 20
+        
+        # Add Label for the Final Month
+        if last_month:
+            width = current_x_pos - month_start_x
+            center_x = month_start_x + (width / 2)
+            month_labels.append((last_month, center_x))
+
+        # Set exact width of grid_box
+        total_width = current_x_pos 
+        
+        grid_box.width = total_width
+        right_col.width = total_width
+        
+        # --- Month Labels Layer ---
+        from kivy.uix.relativelayout import RelativeLayout
+        header_rel = RelativeLayout(size_hint_x=None, width=total_width, size_hint_y=None, height=20)
+        
+        for m_text, center_x in month_labels:
+            # Center the label at center_x
+            # We assume label width is 40. pos = center_x - 20
+            lbl = Label(
+                text=m_text, 
+                font_size='10sp', 
+                color=(0.5,0.5,0.5,1), 
+                size_hint= (None, None),
+                size=(40, 20),
+                pos=(center_x - 20, 0),
+                halign='center', valign='bottom'
+            )
+            header_rel.add_widget(lbl)
+            
+        right_col.add_widget(header_rel)
+        right_col.add_widget(grid_box)
+        
+        heatmap.add_widget(right_col)
+
+    def get_color_for_activity(self, count):
+        # Dark theme base: (0.15, 0.17, 0.20, 1) -> Empty
+        # Accent is Blueish (0.345, 0.651, 1.0, 1)
+        # We interpolate alph or mix
+        if count == 0:
+            return (0.15, 0.17, 0.20, 1)
+        elif count < 100:
+             return (0.19, 0.35, 0.55, 1)
+        elif count < 500:
+             return (0.26, 0.50, 0.77, 1)
+        else:
+             return (0.345, 0.651, 1.0, 1)
+
 
 class PlaceholderDisplay(Screen):
     text = StringProperty("")
