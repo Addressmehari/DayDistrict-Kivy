@@ -5,7 +5,9 @@ import http.server
 import socketserver
 import threading
 import os
+import shutil
 from kivy.utils import platform
+from kivy.app import App
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.uix.screenmanager import Screen
@@ -17,14 +19,64 @@ Builder.load_file("map_screen.kv")
 PORT = 8080
 SERVER_STARTED = False
 
+def setup_www_dir():
+    # 1. Determine Bundle Directory (Source)
+    # On Android, this is where the APK extracts assets
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    source_dir = os.path.join(app_dir, "GitVille")
+
+    # 2. Determine Writable Directory (Target)
+    if platform == 'android':
+        app = App.get_running_app()
+        data_dir = app.user_data_dir
+        # Fallback if app is not ready yet? usually ready in main loop
+        if not data_dir: 
+            data_dir = "/data/data/org.test.diaryapp/files"
+    else:
+        # On Windows/Desktop, use same pattern for consistency or just temp
+        # But to match DiaryManager's "data_dir" logic:
+        data_dir = app_dir
+
+    target_dir = os.path.join(data_dir, "GitVille_www")
+    
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
+    # 3. Copy Static Assets (HTML, JS, CSS)
+    # We copy them every time to update if app updates
+    # We skip houses.json/roads.json if they exist? No, generator handles them.
+    # Actually generator runs on save. On first launch, they might be missing.
+    
+    if os.path.exists(source_dir):
+        for item in os.listdir(source_dir):
+            s = os.path.join(source_dir, item)
+            d = os.path.join(target_dir, item)
+            
+            # Don't overwrite dynamic data if it exists?
+            # houses.json and roads.json are dynamic.
+            if item in ["houses.json", "roads.json"]:
+                if not os.path.exists(d): 
+                    # If missing, copy defaults/empty
+                    if os.path.isfile(s):
+                         shutil.copy2(s, d)
+                continue
+                
+            if os.path.isfile(s):
+                shutil.copy2(s, d)
+            # Recursive copy for dirs if any?
+    else:
+        print(f"Source GitVille dir not found at {source_dir}")
+
+    return target_dir
+
+
 def start_local_server():
     global SERVER_STARTED
     if SERVER_STARTED:
         return
 
-    # Use absolute path to GitVille
-    app_dir = os.path.dirname(os.path.abspath(__file__))
-    web_dir = os.path.join(app_dir, "GitVille")
+    # Setup the serving directory
+    web_dir = setup_www_dir()
     
     if not os.path.exists(web_dir):
         print(f"Error: Web directory {web_dir} not found.")
@@ -39,6 +91,8 @@ def start_local_server():
 
     def serve():
         try:
+             # Allow reuse address to prevent "Address already in use" on restarts
+            socketserver.TCPServer.allow_reuse_address = True
             with socketserver.TCPServer(("", PORT), Handler) as httpd:
                 print(f"Local Server running at http://localhost:{PORT}")
                 httpd.serve_forever()

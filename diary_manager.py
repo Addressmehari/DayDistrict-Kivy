@@ -1,21 +1,45 @@
 import json
 import os
-import subprocess
 from datetime import datetime, timedelta
+from kivy.app import App
+from kivy.utils import platform
 
-DATA_FILE = "diary_data.json"
-QUESTIONS_FILE = "questions.json"
-TAGS_FILE = "tags.json"
-RESERVED_KEYS = ["tags"]
+# Import logic for generator
+import sys
+# Ensure GitVille is in path to import
+app_dir = os.path.dirname(os.path.abspath(__file__))
+gitville_dir = os.path.join(app_dir, "GitVille")
+if gitville_dir not in sys.path:
+    sys.path.append(gitville_dir)
+
+try:
+    from GitVille import generate_diary_city
+except ImportError:
+    generate_diary_city = None
 
 class DiaryManager:
     def __init__(self):
+        self.data_dir = self.get_data_dir()
+        
+        self.DATA_FILE = os.path.join(self.data_dir, "diary_data.json")
+        self.QUESTIONS_FILE = os.path.join(self.data_dir, "questions.json")
+        self.TAGS_FILE = os.path.join(self.data_dir, "tags.json")
+        self.CONFIG_FILE = os.path.join(self.data_dir, "user_config.json")
+        
         self.ensure_files_exist()
         self.ensure_config_exists()
 
+    def get_data_dir(self):
+        if platform == 'android':
+            app = App.get_running_app()
+            if app:
+                return app.user_data_dir
+            # Fallback for service context if app is None (unlikely for main app)
+            return "/data/data/org.test.diaryapp/files"
+        return os.path.dirname(os.path.abspath(__file__))
+
     def ensure_config_exists(self):
-        CONFIG_FILE = "user_config.json"
-        if not os.path.exists(CONFIG_FILE):
+        if not os.path.exists(self.CONFIG_FILE):
              default_config = {
                 "username": "User",
                 "joined_date": datetime.now().strftime("%Y-%m-%d"),
@@ -27,36 +51,39 @@ class DiaryManager:
                 "favorite_music": "",
                 "bio": ""
              }
-             with open(CONFIG_FILE, "w") as f:
+             with open(self.CONFIG_FILE, "w") as f:
                  json.dump(default_config, f, indent=4)
 
 
     def ensure_files_exist(self):
-        if not os.path.exists(DATA_FILE):
-            with open(DATA_FILE, "w") as f:
+        if not os.path.exists(self.DATA_FILE):
+            with open(self.DATA_FILE, "w") as f:
                 json.dump({}, f)
         
-        if not os.path.exists(TAGS_FILE):
-            with open(TAGS_FILE, "w") as f:
+        if not os.path.exists(self.TAGS_FILE):
+            with open(self.TAGS_FILE, "w") as f:
                 json.dump([], f)
         
-        # We assume questions.json exists as we created it, 
-        # but for robustness one could check or create default.
+        if not os.path.exists(self.QUESTIONS_FILE):
+            # Create default questions if missing
+            default_questions = [
+                "What was the highlight of your day?",
+                "What challenged you today?",
+                "What are you grateful for?"
+            ]
+            with open(self.QUESTIONS_FILE, "w") as f:
+                json.dump(default_questions, f, indent=4)
 
     def load_questions(self):
-        if os.path.exists(QUESTIONS_FILE):
-            with open(QUESTIONS_FILE, "r") as f:
+        if os.path.exists(self.QUESTIONS_FILE):
+            with open(self.QUESTIONS_FILE, "r") as f:
                 return json.load(f)
         return []
 
     def load_entry(self, date_str):
-        """
-        Loads the entry for a specific date (YYYY-MM-DD).
-        Returns a dict of {question: answer}.
-        """
-        if os.path.exists(DATA_FILE):
+        if os.path.exists(self.DATA_FILE):
             try:
-                with open(DATA_FILE, "r") as f:
+                with open(self.DATA_FILE, "r") as f:
                     data = json.load(f)
                     return data.get(date_str, {})
             except json.JSONDecodeError:
@@ -64,87 +91,62 @@ class DiaryManager:
         return {}
 
     def save_entry(self, date_str, answers):
-        """
-        Saves answers for a specific date.
-        answers: dict of {question: answer}
-        
-        Cleanup Logic: 
-        If an entry has NO content (all empty values) AND its questions (keys) 
-        match the current global defaults, we do NOT save it (we delete it).
-        This prevents 'ghost' entries from cluttering the file.
-        """
         data = {}
-        if os.path.exists(DATA_FILE):
+        if os.path.exists(self.DATA_FILE):
             try:
-                with open(DATA_FILE, "r") as f:
+                with open(self.DATA_FILE, "r") as f:
                     data = json.load(f)
             except json.JSONDecodeError:
                 data = {}
         
-        # Check if entry is effectively empty (ignoring reserved keys if present in answers)
-        # However, save_entry is usually called with just questions.
-        # We must preserve existing tags if they exist in the file but not in 'answers'.
-        
-        # 1. Get existing tags
         existing_entry = data.get(date_str, {})
         existing_tags = existing_entry.get("tags", [])
         
-        # 2. Add tags to answers to form the full object to save
-        # We make a copy to avoid mutating the passed 'answers' object if the caller reuses it
         full_entry = answers.copy()
         if existing_tags:
             full_entry["tags"] = existing_tags
             
-        # 3. Check emptiness (ignoring tags and reserved keys for the "ghost entry" logic)
-        # If we have tags, it's NOT empty.
         has_content = False
-        
         if existing_tags:
              has_content = True
         else:
-            # Check text answers
             for k, v in answers.items():
-                if k not in RESERVED_KEYS and str(v).strip():
+                if k != "tags" and str(v).strip():
                     has_content = True
                     break
         
         if not has_content:
-            # Check if schema matches defaults (only if we have no content)
             defaults = self.load_questions()
-            # Keys in answers (excluding reserved) vs defaults
-            answer_keys = {k for k in answers.keys() if k not in RESERVED_KEYS}
+            answer_keys = {k for k in answers.keys() if k != "tags"}
             default_keys = set(defaults)
             
             if answer_keys == default_keys:
-                # Ghost entry. Delete if exists.
                 if date_str in data:
                     del data[date_str]
-                    with open(DATA_FILE, "w") as f:
+                    with open(self.DATA_FILE, "w") as f:
                         json.dump(data, f, indent=4)
                     self.update_city_visualizer()
                 return
 
-        # Normal save
         data[date_str] = full_entry
         
-        with open(DATA_FILE, "w") as f:
+        with open(self.DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
 
         self.update_city_visualizer()
 
     def update_city_visualizer(self):
         try:
-            # Run the generator script in the background
-            # We use absolute path to ensure it finds the script
-            # Assumes GitVille folder is in the same directory as this file
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            script_path = os.path.join(base_dir, "GitVille", "generate_diary_city.py")
-            
-            if os.path.exists(script_path):
-                # We need to run python. 'python' command assumed to be in path.
-                # set cwd to GitVille so it writes files there
-                subprocess.Popen(["python", script_path], cwd=os.path.dirname(script_path), 
-                                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            if generate_diary_city:
+                # We need to decide where the visualizer output goes.
+                # It should go to a folder inside user_data_dir that the web server serves.
+                # Let's call it "GitVille_www"
+                www_dir = os.path.join(self.data_dir, "GitVille_www")
+                
+                # We generate the data files there.
+                generate_diary_city.generate(self.DATA_FILE, www_dir)
+            else:
+                print("Generator module not found")
         except Exception as e:
             print(f"Failed to update city visualizer: {e}")
 
