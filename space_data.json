@@ -1,0 +1,30 @@
+[
+    {
+        "id": "e3f80b5e-0b30-4c6f-8d2a-dc4b951f643b",
+        "type": "note",
+        "content": "\"Stay Hungry.\"",
+        "pos": [
+            78.7103064066853,
+            438.76212832550857
+        ],
+        "size": [
+            150,
+            150
+        ],
+        "rotation": 0.0
+    },
+    {
+        "id": "c5c00d2a-f5f8-4b7f-96da-2b7158bea65d",
+        "type": "note",
+        "content": "first note\n",
+        "pos": [
+            150.0,
+            250.0
+        ],
+        "size": [
+            150,
+            150
+        ],
+        "rotation": 0.0
+    }
+]
