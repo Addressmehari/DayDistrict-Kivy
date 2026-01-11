@@ -1,4 +1,4 @@
 __pycache__/
 *.pyc
-__pycache__/screens.cpython-313.pyc
-__pycache__/widgets.cpython-313.pyc
+bin/
+.buildozer/
