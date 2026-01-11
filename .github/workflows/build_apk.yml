@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build_APK
 
 on:
   push:
@@ -8,25 +8,21 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch: # Manual run from the Actions tab
 
 jobs:
   build-android:
-    name: Build for Android
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    permissions:
+      contents: write # Required to upload artifacts/releases
 
-      - name: Build with Buildozer Action
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Buildozer-Kivy-Apk-Creator
         uses: wildspider57389928/Buildozer-Kivy-APK_Creator@4.0.0
         with:
           project-dir: .
           command: buildozer android debug
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: diary-app-apk
-          path: bin/*.apk
