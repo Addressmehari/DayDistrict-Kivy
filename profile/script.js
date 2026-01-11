@@ -218,32 +218,86 @@ function handleNoteClick(screenX, screenY) {
 }
 
 // --- UI Logic ---
+// FAB Menu Logic
+ui.fabMenu = document.getElementById('fab-menu');
+ui.btnAddText = document.getElementById('btn-type-text');
+ui.btnAddMusic = document.getElementById('btn-type-music');
+
 ui.addBtn.addEventListener('click', () => {
+    // Toggle Menu
+    ui.fabMenu.classList.toggle('hidden');
+    // Rotation effect for FAB?
+    if (ui.fabMenu.classList.contains('hidden')) {
+        ui.addBtn.style.transform = "rotate(0deg)";
+    } else {
+        ui.addBtn.style.transform = "rotate(45deg)";
+    }
+});
+
+// Close menu if clicked outside? (Optional refinement)
+canvas.addEventListener('click', () => {
+    if (!ui.fabMenu.classList.contains('hidden')) {
+        ui.fabMenu.classList.add('hidden');
+        ui.addBtn.style.transform = "rotate(0deg)";
+    }
+});
+
+ui.btnAddText.addEventListener('click', () => {
+    openModal('text');
+});
+
+ui.btnAddMusic.addEventListener('click', () => {
+    openModal('music');
+});
+
+function openModal(type) {
+    ui.fabMenu.classList.add('hidden');
+    ui.addBtn.style.transform = "rotate(0deg)";
     ui.modal.classList.remove('hidden');
-    // Reset UI
-    switchTab('text');
+    
+    // Reset Data
     ui.inputText.value = "";
     ui.inputMusicTitle.value = "";
     ui.fileLabel.textContent = "Choose Music File...";
     ui.thumbLabel.textContent = "Choose Cover Art...";
+    ui.thumbLabel.style.borderColor = "#444";
+    ui.thumbLabel.style.color = "#aaa";
     ui.inputMusicFile.value = null;
     ui.inputMusicThumb.value = null;
-});
+    
+    // Switch Tab
+    switchTab(type);
+    
+    // Hide tabs header if we want to simulate specific modals?
+    // User said "show modal for text" / "show music modal".
+    // We can just hide the tab bar to make it look like a specific modal.
+    // Or we keep tabs for flexibility. 
+    // "if i select text means show modal for text" -> implies dedicated view.
+    // Let's HIDDEN the tab bar to make it cleaner as requested.
+    const tabBar = document.querySelector('.modal-tabs');
+    if (tabBar) tabBar.style.display = 'none';
+}
 
 ui.cancelBtn.addEventListener('click', () => {
     ui.modal.classList.add('hidden');
 });
 
-ui.tabText.addEventListener('click', () => switchTab('text'));
-ui.tabMusic.addEventListener('click', () => switchTab('music'));
+// Remove manual tab clicking listeners if we hide tabs?
+// ui.tabText.addEventListener('click', () => switchTab('text'));
+// ui.tabMusic.addEventListener('click', () => switchTab('music'));
+// Keep them for internal logic, but UI hides them.
 
 function switchTab(tab) {
     activeTab = tab;
+    // ... rest of switchlogic ...
     if (tab === 'text') {
         ui.tabText.classList.add('active');
         ui.tabMusic.classList.remove('active');
         ui.sectText.classList.remove('hidden');
         ui.sectMusic.classList.add('hidden');
+        
+        // Focus
+        setTimeout(() => ui.inputText.focus(), 100);
     } else {
         ui.tabMusic.classList.add('active');
         ui.tabText.classList.remove('active');
