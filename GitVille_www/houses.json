@@ -1,0 +1,44 @@
+[
+    {
+        "x": 0,
+        "y": 0,
+        "color": "#5439ad",
+        "roofStyle": 1,
+        "doorStyle": 0,
+        "windowStyle": 3,
+        "chimneyStyle": 1,
+        "wallStyle": 2,
+        "username": "2026-01-10",
+        "facing": "down",
+        "has_terrace": false,
+        "obstacle": null
+    },
+    {
+        "x": 3.0,
+        "y": -3.0,
+        "color": "#fef8f6",
+        "roofStyle": 3,
+        "doorStyle": 2,
+        "windowStyle": 3,
+        "chimneyStyle": 0,
+        "wallStyle": 3,
+        "username": "2026-01-11",
+        "facing": "left",
+        "has_terrace": false,
+        "obstacle": null
+    },
+    {
+        "x": 5.0,
+        "y": -3.0,
+        "color": "#079d7b",
+        "roofStyle": 0,
+        "doorStyle": 3,
+        "windowStyle": 1,
+        "chimneyStyle": 1,
+        "wallStyle": 3,
+        "username": "2026-01-12",
+        "facing": "left",
+        "has_terrace": false,
+        "obstacle": null
+    }
+]

@@ -13,11 +13,13 @@ if gitville_dir not in sys.path:
     sys.path.append(gitville_dir)
 
 try:
-    from GitVille import generate_diary_city
+    import generate_diary_city
 except ImportError:
     generate_diary_city = None
 
 class DiaryManager:
+    RESERVED_KEYS = ["tags"]
+
     def __init__(self):
         self.data_dir = self.get_data_dir()
         
@@ -165,7 +167,7 @@ class DiaryManager:
         """
         Updates the global default questions (questions.json).
         """
-        with open(QUESTIONS_FILE, "w") as f:
+        with open(self.QUESTIONS_FILE, "w") as f:
             json.dump(questions_list, f, indent=4)
 
     def overwrite_entry_schema(self, date_str, questions_list):
@@ -186,9 +188,9 @@ class DiaryManager:
         """
         Returns the entire dictionary of entries {date_str: {question: answer}}.
         """
-        if os.path.exists(DATA_FILE):
+        if os.path.exists(self.DATA_FILE):
             try:
-                with open(DATA_FILE, "r") as f:
+                with open(self.DATA_FILE, "r") as f:
                     return json.load(f)
             except json.JSONDecodeError:
                 return {}
@@ -204,7 +206,7 @@ class DiaryManager:
         entry = self.load_entry(date_str)
         if entry and len(entry) > 0:
             # Filter out reserved keys
-            keys = [k for k in entry.keys() if k not in RESERVED_KEYS]
+            keys = [k for k in entry.keys() if k not in self.RESERVED_KEYS]
             if keys:
                 return keys
         return self.load_questions()
@@ -215,9 +217,9 @@ class DiaryManager:
 
     def save_tags(self, date_str, tags_list):
         data = {}
-        if os.path.exists(DATA_FILE):
+        if os.path.exists(self.DATA_FILE):
             try:
-                with open(DATA_FILE, "r") as f:
+                with open(self.DATA_FILE, "r") as f:
                     data = json.load(f)
             except:
                 data = {}
@@ -248,20 +250,20 @@ class DiaryManager:
                  if date_str in data:
                     del data[date_str]
         
-        with open(DATA_FILE, "w") as f:
+        with open(self.DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
 
     def load_global_tags(self):
-        if os.path.exists(TAGS_FILE):
+        if os.path.exists(self.TAGS_FILE):
             try:
-                with open(TAGS_FILE, "r") as f:
+                with open(self.TAGS_FILE, "r") as f:
                     return json.load(f)
             except:
                 return []
         return []
 
     def save_global_tags(self, tags_list):
-        with open(TAGS_FILE, "w") as f:
+        with open(self.TAGS_FILE, "w") as f:
             json.dump(tags_list, f, indent=4)
 
     def add_global_tag(self, tag_text):
@@ -305,19 +307,17 @@ class DiaryManager:
         return results
 
     def get_user_profile(self):
-        CONFIG_FILE = "user_config.json"
-        if os.path.exists(CONFIG_FILE):
+        if os.path.exists(self.CONFIG_FILE):
             try:
-                with open(CONFIG_FILE, "r") as f:
+                with open(self.CONFIG_FILE, "r") as f:
                     return json.load(f)
             except:
                 pass
         return {}
 
     def save_user_profile(self, profile_data):
-        CONFIG_FILE = "user_config.json"
         current_data = self.get_user_profile()
         current_data.update(profile_data)
-        with open(CONFIG_FILE, "w") as f:
+        with open(self.CONFIG_FILE, "w") as f:
             json.dump(current_data, f, indent=4)
 
