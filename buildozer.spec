@@ -13,13 +13,13 @@ package.domain = org.test
 source.dir = .
 
 # (list) Source files to include (let empty to include all the files)
-source.include_exts = py,png,jpg,kv,atlas,json,mp3,wav
+source.include_exts = py,png,jpg,kv,atlas,json,html,css,js,ttf,mp3,wav
 
 # (list) List of exclusions using pattern matching
 #source.exclude_exts = spec
 
 # (list) List of exclusions using pattern matching
-#source.exclude_patterns = license,images/*/*.jpg
+source.exclude_patterns = assets/cache/*, bin/*, .git/*, .github/*, __pycache__/*
 
 # (str) Application versioning (method 1)
 version = 0.1
@@ -30,7 +30,7 @@ version = 0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,plyer,mutagen
+requirements = python3,kivy,plyer,mutagen,pyjnius,android
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -63,7 +63,7 @@ fullscreen = 0
 android.presplash_color = #0d1117
 
 # (list) Permissions
-android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.permissions = INTERNET,ACCESS_NETWORK_STATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,ACCESS_FINE_LOCATION
 
 # (int) Target Android API, should be as high as possible.
 android.api = 33
