@@ -3,7 +3,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.animation import Animation
 from kivy.clock import Clock
-from kivy.properties import StringProperty, ListProperty, NumericProperty
+from kivy.properties import StringProperty, ListProperty, NumericProperty, BooleanProperty
 from kivy.app import App
 from kivy.uix.modalview import ModalView
 from kivy.uix.label import Label
@@ -12,6 +12,25 @@ from diary_manager import DiaryManager
 from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell, TagChip, ChecklistItem, SearchResultItem
 from datetime import datetime, timedelta
 from map_screen import CityMapScreen
+import os
+from kivy.utils import platform
+from plyer import filechooser
+from kivy.clock import mainthread
+from kivy.core.audio import SoundLoader
+# Fallback for desktop testing if plyer has issues or for specific behaviors
+import tkinter as tk
+from tkinter import filedialog
+import shutil
+# Music Metadata
+try:
+    import mutagen
+    from mutagen.mp3 import MP3
+    from mutagen.id3 import ID3, APIC, TIT2, TPE1
+except ImportError:
+    mutagen = None
+
+
+
 
 # Initialize Data Manager
 dm = DiaryManager()
@@ -933,4 +952,208 @@ class TagSelectionModal(ModalView):
                 self.current_tags.remove(tag)
                 
         dm.save_tags(self.date_str, self.current_tags)
+
+
+class ProfileScreen(Screen):
+    username = StringProperty("")
+    joined_date = StringProperty("")
+    bio = StringProperty("")
+    fav_music = StringProperty("") # Used as Title now if extracted
+    pfp_source = StringProperty("")
+    fav_photo_source = StringProperty("")
+    
+    # Music Player
+    music_path = StringProperty("")
+    music_title = StringProperty("Unknown Title")
+    music_artist = StringProperty("Unknown Artist")
+    music_cover = StringProperty("")
+    is_playing = BooleanProperty(False)
+    current_sound = None
+
+
+    def on_enter(self, *args):
+        self.load_profile()
+
+    def on_leave(self, *args):
+        # Stop music when leaving screen
+        if self.current_sound:
+            self.current_sound.stop()
+        self.is_playing = False
+
+    def load_profile(self):
+        data = dm.get_user_profile()
+        self.username = data.get("username", "User")
+        self.joined_date = "Member since " + data.get("joined_date", "")
+        self.bio = data.get("bio", "")
+        self.fav_music = data.get("favorite_music", "")
+        self.music_path = data.get("music_path", "")
+        self.music_title = data.get("music_title", "Unknown Title")
+        self.music_artist = data.get("music_artist", "Unknown Artist")
+        self.music_cover = data.get("music_cover", "")
+        
+        pfp = data.get("profile_pic", "")
+        # Use a fallback if empty or file doesn't exist (though exist check is better done in kv or just fail silently)
+        self.pfp_source = pfp if pfp and os.path.exists(pfp) else "assets/default_avatar.png" 
+        
+        photo = data.get("favorite_photo", "")
+        self.fav_photo_source = photo if photo and os.path.exists(photo) else "assets/placeholder_photo.png"
+
+    def save_field(self, field, value):
+        dm.save_user_profile({field: value})
+        self.load_profile() # Reload to propagate changes
+
+    def toggle_music(self):
+        if self.is_playing:
+            if self.current_sound:
+                self.current_sound.stop()
+            self.is_playing = False
+        else:
+            if self.music_path and os.path.exists(self.music_path):
+                # Unload previous to be safe
+                if self.current_sound:
+                    self.current_sound.unload()
+                
+                try:
+                    self.current_sound = SoundLoader.load(self.music_path)
+                    if self.current_sound:
+                        self.current_sound.play()
+                        self.is_playing = True
+                        self.current_sound.bind(on_stop=self.stop_playback_ui)
+                    else:
+                        print("Could not load sound file.")
+                except Exception as e:
+                    print(f"Error playing sound: {e}")
+            else:
+                 print("No music path or file missing")
+
+    def stop_playback_ui(self, *args):
+        self.is_playing = False
+
+    def extract_music_metadata(self, path):
+        if not mutagen:
+            return
+        
+        try:
+            audio = MP3(path, ID3=ID3)
+            
+            # Extract Title
+            if 'TIT2' in audio:
+                self.music_title = str(audio['TIT2'])
+                self.save_field('music_title', self.music_title)
+            else:
+                self.music_title = os.path.basename(path).replace('.mp3', '')
+                self.save_field('music_title', self.music_title)
+                
+            # Extract Artist
+            if 'TPE1' in audio:
+                self.music_artist = str(audio['TPE1'])
+                self.save_field('music_artist', self.music_artist)
+            else:
+                self.music_artist = "Unknown Artist"
+                self.save_field('music_artist', self.music_artist)
+
+            # Extract Cover Art
+            cover_found = False
+            for tag in audio.tags.values():
+                if isinstance(tag, APIC):
+                    # Save cover
+                    cover_data = tag.data
+                    cover_name = f"cover_{os.path.basename(path)}.jpg"
+                    # Ensure assets/cache exists
+                    cache_dir = os.path.join("assets", "cache")
+                    if not os.path.exists(cache_dir):
+                        os.makedirs(cache_dir)
+                    
+                    cover_path = os.path.join(cache_dir, cover_name)
+                    with open(cover_path, 'wb') as img:
+                        img.write(cover_data)
+                    
+                    self.music_cover = cover_path
+                    self.save_field('music_cover', cover_path)
+                    cover_found = True
+                    break
+            
+            if not cover_found:
+                self.music_cover = ""
+                self.save_field('music_cover', "")
+
+        except Exception as e:
+            print(f"Metadata error: {e}")
+            # Fallback
+            self.music_title = os.path.basename(path)
+            self.music_artist = "Unknown Artist"
+            self.music_cover = ""
+
+    def choose_image(self, field_name):
+        # Wrapper for backward compatibility or specific image call
+        self.choose_file(field_name, file_type='image')
+
+    def choose_file(self, field_name, file_type='image'):
+        # Native File Chooser Logic
+        self.current_field = field_name
+        
+        filters = []
+        if file_type == 'image':
+            filters = [("Images", "*.png", "*.jpg", "*.jpeg", "*.webp")]
+            tk_filters = [("Image Files", "*.png;*.jpg;*.jpeg;*.webp")]
+        elif file_type == 'audio':
+            filters = [("Audio", "*.mp3", "*.wav", "*.ogg", "*.m4a")]
+            tk_filters = [("Audio Files", "*.mp3;*.wav;*.ogg;*.m4a")]
+
+        if platform == 'android':
+            try:
+                # Plyer interface
+                filechooser.open_file(on_selection=self._on_selection, filters=filters)
+            except Exception as e:
+                print(f"Plyer error: {e}")
+        else:
+            try:
+                root = tk.Tk()
+                root.withdraw()
+                file_path = filedialog.askopenfilename(title="Select File", filetypes=tk_filters)
+                root.destroy()
+                if file_path:
+                    self._on_selection([file_path])
+            except Exception as e:
+                # Fallback to plyer
+                try:
+                    filechooser.open_file(on_selection=self._on_selection, filters=filters)
+                except:
+                    pass
+
+    def _on_selection(self, selection):
+        if not selection:
+            return
+            
+        path = selection[0]
+        print(f"Selected: {path}")
+        
+        # Save field
+        self.save_field(self.current_field, path)
+        
+        # If music, trigger metadata extraction
+        if self.current_field == 'music_path':
+            # Run extraction in rough way (better in thread but ok for now)
+            self.extract_music_metadata(path)
+
+
+class MusicPlayerCard(BoxLayout):
+    is_playing = BooleanProperty(False)
+    glow_alpha = NumericProperty(0)
+    
+    def on_is_playing(self, instance, value):
+        if value:
+            # Pulse animation
+            self.anim = Animation(glow_alpha=0.5, duration=0.8, t='in_out_sine') + \
+                        Animation(glow_alpha=0.1, duration=0.8, t='in_out_sine')
+            self.anim.repeat = True
+            self.anim.start(self)
+        else:
+            if hasattr(self, 'anim'):
+                self.anim.cancel(self)
+            # Fade out
+            Animation(glow_alpha=0, duration=0.3).start(self)
+
+
+
 

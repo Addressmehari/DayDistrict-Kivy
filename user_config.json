@@ -1,7 +1,14 @@
 {
-    "username": "hari",
+    "username": "harii",
     "joined_date": "2026-01-10",
     "daily_reminder": false,
     "reminder_time": "20:00",
-    "theme_mode": "dark"
+    "theme_mode": "dark",
+    "profile_pic": "C:/Users/sbava/OneDrive/Pictures/lovebook/Picsart_25-11-15_18-20-47-412.jpg",
+    "favorite_photo": "C:/Users/sbava/OneDrive/Pictures/4.jpeg",
+    "bio": "coding and game development\n@address_me_hari - ig",
+    "music_path": "C:/Users/sbava/Downloads/Aanpaavam Pollathathu Theme.mp3",
+    "music_title": "Aanpaavam Pollathathu Theme - MassTamilan",
+    "music_artist": "Siddhu Kumar - MassTamilan",
+    "music_cover": "assets\\cache\\cover_Aanpaavam Pollathathu Theme.mp3.jpg"
 }

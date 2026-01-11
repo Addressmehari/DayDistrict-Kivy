@@ -11,6 +11,25 @@ RESERVED_KEYS = ["tags"]
 class DiaryManager:
     def __init__(self):
         self.ensure_files_exist()
+        self.ensure_config_exists()
+
+    def ensure_config_exists(self):
+        CONFIG_FILE = "user_config.json"
+        if not os.path.exists(CONFIG_FILE):
+             default_config = {
+                "username": "User",
+                "joined_date": datetime.now().strftime("%Y-%m-%d"),
+                "daily_reminder": False,
+                "reminder_time": "20:00",
+                "theme_mode": "dark",
+                "profile_pic": "",
+                "favorite_photo": "",
+                "favorite_music": "",
+                "bio": ""
+             }
+             with open(CONFIG_FILE, "w") as f:
+                 json.dump(default_config, f, indent=4)
+
 
     def ensure_files_exist(self):
         if not os.path.exists(DATA_FILE):
@@ -282,3 +301,21 @@ class DiaryManager:
         # Sort by date descending
         results.sort(key=lambda x: x['date'], reverse=True)
         return results
+
+    def get_user_profile(self):
+        CONFIG_FILE = "user_config.json"
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
+    def save_user_profile(self, profile_data):
+        CONFIG_FILE = "user_config.json"
+        current_data = self.get_user_profile()
+        current_data.update(profile_data)
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(current_data, f, indent=4)
+

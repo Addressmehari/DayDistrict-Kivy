@@ -11,10 +11,21 @@
 #:import DiaryEntryItemCard widgets.DiaryEntryItemCard
 #:import WindowManager screens.WindowManager
 #:import HomeScreen screens.HomeScreen
+#:import DampedScrollEffect kivy.effects.dampedscroll.DampedScrollEffect
+#:import SwipeBox widgets.SwipeBox
+#:import DiaryEntryItemCard widgets.DiaryEntryItemCard
+#:import WindowManager screens.WindowManager
+#:import HomeScreen screens.HomeScreen
 #:import DiaryScreen screens.DiaryScreen
 #:import DetailScreen screens.DetailScreen
 #:import QuestionEditorScreen screens.QuestionEditorScreen
 #:import DayPage screens.DayPage
+#:import ProfileScreen screens.ProfileScreen
+#:import ProfileScreen screens.ProfileScreen
+#:import MusicPlayerCard screens.MusicPlayerCard
+
+
+
 
 <FlatButton@Button>:
     background_color: 0, 0, 0, 0
@@ -55,6 +66,8 @@ WindowManager:
     TagManagerScreen:
     DetailScreen:
     CalendarViewScreen:
+
+
 
 #:import NavButton widgets.NavButton
 #:import BottomNavBar widgets.BottomNavBar
@@ -441,7 +454,34 @@ WindowManager:
                         text_size: self.size
                         halign: 'left'
 
+                # Profile Button
+                Button:
+                    size_hint: None, None
+                    size: '50dp', '50dp'
+                    background_color: 0,0,0,0
+                    on_release: root.manager.current = 'profile_tab'
+                    canvas.before:
+                        Color:
+                            rgba: C_SURFACE
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [25]
+                        Color:
+                            rgba: C_ACCENT
+                        Line:
+                            rounded_rectangle: (self.x, self.y, self.width, self.height, 25)
+                            width: 1
+                    Label:
+                        text: u"\ue853" # account_circle
+                        font_name: 'assets/MaterialIcons-Regular.ttf'
+                        font_size: '30sp'
+                        color: C_ACCENT
+                        center_x: self.parent.center_x
+                        center_y: self.parent.center_y
+
             # --- Search Bar ---
+
             BoxLayout:
                 size_hint_y: None
                 height: '45dp'
@@ -693,9 +733,9 @@ WindowManager:
                 name: "settings_tab"
                 text: "Settings\n(Coming Soon)"
             
-            PlaceholderDisplay:
+            ProfileScreen:
                 name: "profile_tab"
-                text: "Profile\n(Coming Soon)"
+
 
         # Bottom Navigation Bar
         BoxLayout:
@@ -1606,3 +1646,414 @@ WindowManager:
                     pos: self.pos
                     size: self.size
                     radius: [6]
+
+<ProfileScreen>:
+    name: "profile"
+    BoxLayout:
+        orientation: "vertical"
+        canvas.before:
+            Color:
+                rgba: C_BG
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        # Header
+        BoxLayout:
+            size_hint_y: None
+            height: '60dp'
+            padding: [15, 0]
+            canvas.before:
+                Color:
+                    rgba: C_SURFACE
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: C_BORDER
+                Line:
+                    points: [self.x, self.y, self.width, self.y]
+                    width: 1
+
+                Line:
+                    points: [self.x, self.y, self.width, self.y]
+                    width: 1
+            
+            Label:
+                text: "My Profile"
+                halign: 'center'
+                valign: 'middle'
+                color: C_TEXT_MAIN
+                bold: True
+                font_size: '20sp'
+
+
+        ScrollView:
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                
+                # --- SECTION 1: HEADER (Cover + Avatar) ---
+                RelativeLayout:
+                    size_hint_y: None
+                    height: '240dp' # 180 cover + 60 overlap space
+                    
+                    # Cover Image (Favorite Photo)
+                    AsyncImage:
+                        source: root.fav_photo_source
+                        pos_hint: {'top': 1}
+                        size_hint: 1, None
+                        height: '180dp'
+                        fit_mode: "cover"
+
+                    # Edit Cover Button
+                    Button:
+                        text: "Edit Cover"
+                        font_size: '11sp'
+                        size_hint: None, None
+                        size: '80dp', '28dp'
+                        pos_hint: {'right': 0.95, 'top': 0.96}
+                        background_color: 0,0,0,0
+                        on_release: root.choose_image('favorite_photo')
+                        canvas.before:
+                            Color:
+                                rgba: (0,0,0,0.5)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [14]
+                    
+                    # Avatar (Overlapping)
+                    BoxLayout:
+                        size_hint: None, None
+                        size: '120dp', '120dp'
+                        pos: '20dp', '0dp' # Bottom-left relative to container. 
+                        # Container height=240. Cover=180 (top). Cover bot=60.
+                        # We want avatar center on 60. so y=0 is center 60.
+                        # Wait, y=0. Height 120. Center=60. Perfect.
+                        
+                        # Avatar Circle Stencil
+                        canvas.before:
+                            StencilPush
+                            Ellipse:
+                                pos: self.pos
+                                size: self.size
+                            StencilUse
+                        
+                        canvas.after:
+                            StencilUnUse
+                            Ellipse:
+                                pos: self.pos
+                                size: self.size
+                            StencilPop
+                            # Outline (Dark BG color to separate from cover)
+                            Color:
+                                rgba: C_BG
+                            Line:
+                                circle: (self.center_x, self.center_y, self.width/2)
+                                width: 4
+                        
+                        AsyncImage:
+                            source: root.pfp_source
+                            size_hint: 1, 1
+                            fit_mode: "cover"
+                        
+                    # Edit PFP Button (Invisible overlay or small icon?)
+                    # Let's put a small button next to avatar or make avatar clickable?
+                    # Be explicit with a badge or button.
+                    Button:
+                        text: "+"
+                        size_hint: None, None
+                        size: '30dp', '30dp'
+                        pos: '90dp', '10dp' # Relative to container
+                        background_color: 0,0,0,0
+                        on_release: root.choose_image('profile_pic')
+                        canvas.before:
+                            Color:
+                                rgba: C_ACCENT
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [15]
+
+                # --- SECTION 2: IDENTITY ---
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: [25, 10, 25, 20]
+                    spacing: 5
+                    
+                    # Name
+                    TextInput:
+                        text: root.username
+                        multiline: False
+                        background_normal: ''
+                        background_active: ''
+                        background_color: 0,0,0,0
+                        foreground_color: C_TEXT_MAIN
+                        cursor_color: C_ACCENT
+                        font_size: '26sp'
+                        bold: True
+                        halign: 'left'
+                        hint_text: "Your Name"
+                        hint_text_color: C_TEXT_SEC
+                        size_hint_y: None
+                        height: '40dp'
+                        padding: [0, 5]
+                        write_tab: False
+                        on_text_validate: root.save_field('username', self.text)
+                    
+                    # Info Row (Date)
+                    BoxLayout:
+                        size_hint_y: None
+                        height: '20dp'
+                        spacing: 10
+                        Label:
+                            text: u"\ue916" # Date range icon
+                            font_name: 'assets/MaterialIcons-Regular.ttf'
+                            font_size: '14sp'
+                            color: C_TEXT_SEC
+                            size_hint_x: None
+                            width: self.texture_size[0]
+                        Label:
+                            text: root.joined_date
+                            font_size: '13sp'
+                            color: C_TEXT_SEC
+                            halign: 'left'
+                            text_size: self.size
+                    
+                    # Bio
+                    TextInput:
+                        id: bio_input_ref
+                        text: root.bio
+                        multiline: True
+                        background_normal: ''
+                        background_active: ''
+                        background_color: 0,0,0,0
+                        foreground_color: (0.8, 0.8, 0.8, 1)
+                        cursor_color: C_ACCENT
+                        font_size: '14sp'
+                        size_hint_y: None
+                        height: '80dp' # Fixed height for bio block
+                        padding: [0, 10]
+                        line_height: 1.3
+                        hint_text: "Passionate about..."
+                        hint_text_color: C_TEXT_SEC
+                        on_text: root.save_field('bio', self.text) # Auto save on typing? or validate
+
+                # --- SECTION 3: GENERAL SETTINGS (Card) ---
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: [20, 10]
+                    spacing: 10
+                    
+                    Label:
+                        text: "General"
+                        font_size: '16sp'
+                        bold: True
+                        color: C_TEXT_MAIN
+                        halign: 'left'
+                        text_size: self.size
+                        size_hint_y: None
+                        height: '30dp'
+
+                    # Card Container
+                    BoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+                        canvas.before:
+                            Color:
+                                rgba: C_SURFACE
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [14]
+                        
+                        # Row 1: Music Player Card (Big & Glossy)
+                        MusicPlayerCard:
+                            is_playing: root.is_playing
+                            size_hint_y: None
+                            height: '110dp' # Big
+                            padding: [15, 15]
+                            spacing: 15
+                            
+                            canvas.before:
+                                # Glass Background
+                                Color:
+                                    rgba: (0.12, 0.12, 0.14, 0.7) 
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [16]
+                                
+                                # Glow Border (Animated)
+                                Color:
+                                    rgba: C_ACCENT[0], C_ACCENT[1], C_ACCENT[2], self.glow_alpha
+                                Line:
+                                    rounded_rectangle: (self.x, self.y, self.width, self.height, 16)
+                                    width: 2
+                                
+                                # Static Subtle Border (Glossy Edge)
+                                Color:
+                                    rgba: (1, 1, 1, 0.1)
+                                Line:
+                                    rounded_rectangle: (self.x, self.y, self.width, self.height, 16)
+                                    width: 1
+
+                            # Album Art (Dynamic & Big)
+                            BoxLayout:
+                                size_hint: None, None
+                                size: '80dp', '80dp'
+                                canvas.before:
+                                    Color:
+                                        rgba: (0,0,0,0)
+                                    RoundedRectangle:
+                                        pos: self.pos
+                                        size: self.size
+                                        radius: [12]
+                                
+                                # Use AsyncImage for extracted cover or fallback icon
+                                AsyncImage:
+                                    source: root.music_cover if root.music_cover else ""
+                                    size_hint: 1, 1
+                                    fit_mode: "cover"
+                                    opacity: 1 if root.music_cover else 0
+                                    radius: [12] # If canvas instructions inside AsyncImage don't clip, we might need fitimage or stencil. 
+                                    # AsyncImage usually doesn't clip by radius directly unless FitImage.
+                                    # But FitImage was removed.
+                                    # Let's simple use stencil trick again if needed or just square. 
+                                    # 80dp is big. Let's try to fit.
+                                
+                                # Fallback Icon
+                                Label:
+                                    text: u"\ue405" # Queue Music Icon
+                                    font_name: 'assets/MaterialIcons-Regular.ttf'
+                                    font_size: '40sp'
+                                    color: C_ACCENT
+                                    opacity: 0 if root.music_cover else 1
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+                            # Info (Metadata)
+                            BoxLayout:
+                                orientation: 'vertical'
+                                valign: 'middle'
+                                padding: [5, 5]
+                                spacing: 4
+                                
+                                # Song Title
+                                Label:
+                                    text: root.music_title if root.music_path else "My Anthem"
+                                    font_size: '18sp'
+                                    bold: True
+                                    color: C_TEXT_MAIN
+                                    halign: 'left'
+                                    text_size: self.size
+                                    size_hint_y: None
+                                    height: '24dp'
+                                    shorten: True
+                                    shorten_from: 'right'
+                                
+                                # Artist
+                                Label:
+                                    text: root.music_artist if root.music_path else "Select a track"
+                                    font_size: '14sp'
+                                    color: C_TEXT_SEC
+                                    halign: 'left'
+                                    text_size: self.size
+                                    size_hint_y: None
+                                    height: '18dp'
+                                    shorten: True
+                                    shorten_from: 'right'
+                                
+                                # Visualizer / Status
+                                Label:
+                                    text: "Now Playing..." if root.is_playing else "Tap play to listen"
+                                    font_size: '11sp'
+                                    color: C_ACCENT
+                                    halign: 'left'
+                                    text_size: self.size
+                                    size_hint_y: None
+                                    height: '14dp'
+                                    opacity: 0.8
+
+                            # Controls
+                            BoxLayout:
+                                size_hint_x: None
+                                width: '50dp'
+                                orientation: 'vertical'
+                                spacing: 10
+                                valign: 'center'
+                                
+                                # Play Button (Centred and Big)
+                                Button:
+                                    text: u"\ue034" if root.is_playing else u"\ue037"
+                                    font_name: 'assets/MaterialIcons-Regular.ttf'
+                                    font_size: '36sp'
+                                    background_color: 0,0,0,0
+                                    color: C_ACCENT
+                                    on_release: root.toggle_music()
+                                    size_hint: 1, None
+                                    height: '50dp'
+                                
+                                # Upload Mini Button
+                                Button:
+                                    text: u"\ue2c6" # file_upload
+                                    font_name: 'assets/MaterialIcons-Regular.ttf'
+                                    font_size: '20sp'
+                                    background_color: 0,0,0,0
+                                    color: C_TEXT_SEC
+                                    on_release: root.choose_file('music_path', 'audio')
+                                    size_hint: 1, None
+                                    height: '30dp'
+                                    opacity: 0.7
+
+                        # Divider
+                        Widget:
+                            size_hint_y: None
+                            height: 1
+                            canvas.before:
+                                Color:
+                                    rgba: (1,1,1,0.05)
+                                Rectangle:
+                                    pos: self.x + 50, self.y
+                                    size: self.width - 50, 1
+
+                        # Row 2: Terms / Info (Filler to match look)
+                        BoxLayout: # Dummy row or redundant info? 
+                            # User said "add about and things ive told".
+                            # I have Music and Bio. I used Photo as cover.
+                            # I can put "Edit Profile" link?
+                            size_hint_y: None
+                            height: '60dp'
+                            padding: [15, 0]
+                            spacing: 15
+                            
+                            Label:
+                                text: u"\ue887" # Info
+                                font_name: 'assets/MaterialIcons-Regular.ttf'
+                                font_size: '22sp'
+                                color: C_TEXT_SEC
+                                size_hint_x: None
+                                width: '30dp'
+                             
+                            Label:
+                                text: "App Version 1.0"
+                                font_size: '14sp'
+                                color: C_TEXT_MAIN
+                                halign: 'left'
+                                text_size: self.size
+                                valign: 'middle'
+
+                            Label:
+                                text: ">"
+                                font_size: '16sp'
+                                color: (0.3, 0.3, 0.3, 1)
+                                size_hint_x: None
+                                width: '20dp'
+
+
