@@ -62,6 +62,10 @@ fullscreen = 0
 # olive, purple, silver, teal.
 android.presplash_color = #0d1117
 
+# (str) Extra xml to write directly inside the <manifest> element of AndroidManifest.xml
+# use this property to enable cleartext traffic (http)
+android.manifest.application_attributes = android:usesCleartextTraffic="true"
+
 # (list) Permissions
 android.permissions = INTERNET,ACCESS_NETWORK_STATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,ACCESS_FINE_LOCATION
 

@@ -106,6 +106,9 @@ def start_local_server():
 # Android Native WebView Logic
 webview_attached = False
 webview_obj = None
+create_webview = None
+remove_webview = None
+webview_import_error = None
 
 if platform == 'android':
     try:
@@ -114,14 +117,16 @@ if platform == 'android':
         
         WebView = autoclass('android.webkit.WebView')
         WebViewClient = autoclass('android.webkit.WebViewClient')
-        LayoutParams = autoclass('android.view.ViewGroup$LayoutParams')
+        # Use FrameLayout.LayoutParams for margins
+        LayoutParams = autoclass('android.widget.FrameLayout$LayoutParams')
+        TypedValue = autoclass('android.util.TypedValue')
         activity = autoclass('org.kivy.android.PythonActivity').mActivity
         
         class MyWebViewClient(WebViewClient):
             pass
             
         @run_on_ui_thread
-        def create_webview(url):
+        def _create_webview_impl(url):
             global webview_obj, webview_attached
             if webview_obj:
                 webview_obj.loadUrl(url)
@@ -136,23 +141,25 @@ if platform == 'android':
             webview.setWebViewClient(MyWebViewClient())
             webview.loadUrl(url)
             
-            # Layout Params to fill screen (minus navbar if possible, or full)
-            # For simplicity, we fill parent. In a real app, we might want to attach to a 
-            # specific layout container ID, but Kivy controls the window.
-            # We add to the main DecorView.
-            
+            # Layout Params to fill screen minus navbar (85dp to be safe? 80dp is bar)
             params = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
             
-            # Correction: Attaching to Window directly overlays EVERYTHING (including Kivy UI).
-            # This is okay for a "Full Screen Map Tab".
-            # We must remove it when switching tabs.
+            # Calculate Bottom Margin (80dp) in Pixels
+            try:
+                metrics = activity.getResources().getDisplayMetrics()
+                # 1 = COMPLEX_UNIT_DIP
+                bottom_margin_px = int(TypedValue.applyDimension(1, 80.0, metrics))
+                params.setMargins(0, 0, 0, bottom_margin_px)
+            except Exception as e:
+                print(f"Margin calc error: {e}")
+            
             activity.addContentView(webview, params)
             
             webview_obj = webview
             webview_attached = True
             
         @run_on_ui_thread
-        def remove_webview():
+        def _remove_webview_impl():
             global webview_obj, webview_attached
             if webview_obj and webview_attached:
                 # Remove from parent
@@ -162,8 +169,13 @@ if platform == 'android':
                 webview_obj = None
                 webview_attached = False
 
+        # Assign to global variables
+        create_webview = _create_webview_impl
+        remove_webview = _remove_webview_impl
+
     except Exception as e:
         print(f"Android Import Error: {e}")
+        webview_import_error = str(e)
 
 class CityMapScreen(Screen):
     def on_enter(self):
@@ -171,10 +183,13 @@ class CityMapScreen(Screen):
         url = f"http://localhost:{PORT}/index.html"
         
         if platform == 'android':
-            try:
-                create_webview(url)
-            except Exception as e:
-                self.ids.status_full.text = f"Error launching Webview: {e}"
+            if create_webview:
+                try:
+                    create_webview(url)
+                except Exception as e:
+                    self.ids.status_full.text = f"Error launching Webview: {e}"
+            else:
+                self.ids.status_full.text = f"Webview init failed: {webview_import_error}"
         else:
             # Windows / Desktop
             # Try to launch Chrome/Edge in App Mode (Frameless window)
@@ -203,7 +218,7 @@ class CityMapScreen(Screen):
                  webbrowser.open(url)
 
     def on_leave(self):
-        if platform == 'android':
+        if platform == 'android' and remove_webview:
              try:
                  remove_webview()
              except:
