@@ -23,6 +23,8 @@
 #:import ProfileScreen screens.ProfileScreen
 #:import ProfileScreen screens.ProfileScreen
 #:import MusicPlayerCard screens.MusicPlayerCard
+#:import dp kivy.metrics.dp
+#:import sp kivy.metrics.sp
 
 
 
@@ -143,7 +145,7 @@ WindowManager:
         text: 
             {'home': u"\ue88a", 'map': u"\ue55b", 'settings': u"\ue8b8", 'profile': u"\ue7fd", 'center': u"\ue3c9"}.get(root.icon_type, "")
         font_name: 'assets/MaterialIcons-Regular.ttf'
-        font_size: root.icon_size + sp(0) # Bind to property
+        font_size: sp(root.icon_size)
         color: 
             (1, 1, 1, 1) if root.icon_type == 'center' else (C_ACCENT if root.state == 'down' else C_TEXT_SEC)
         size_hint: (None, None)
@@ -256,8 +258,8 @@ WindowManager:
             rgba: root.glow_color
         Ellipse:
             # Positioned at bottom-right corner, protruding out
-            pos: self.right - 50, self.y - 30
-            size: 130, 130
+            pos: self.right - dp(50), self.y - dp(30)
+            size: dp(130), dp(130)
             angle_start: 0
             angle_end: 360
             
@@ -397,7 +399,7 @@ WindowManager:
 
 <HeatmapCell>:
     size_hint: (None, None)
-    size: (12, 12)
+    size: '12dp', '12dp'
     canvas.before:
         Color:
             rgba: root.color_val

@@ -8,6 +8,7 @@ from kivy.app import App
 from kivy.uix.modalview import ModalView
 from kivy.uix.label import Label
 from kivy.uix.button import Button
+from kivy.metrics import dp
 from diary_manager import DiaryManager
 from widgets import DiaryEntryItemCard, QuestionEditItem, BottomNavBar, NavButton, StatCard, RecentEntryItem, HeatmapCell, TagChip, ChecklistItem, SearchResultItem
 from datetime import datetime, timedelta
@@ -292,19 +293,19 @@ class HomeDashboard(Screen):
         
         # --- Left Column: Day Labels ---
         # Align with grid (which starts 20px down due to header) -> Top padding 20
-        day_labels = BoxLayout(orientation='vertical', size_hint_x=None, width=30, spacing=4, padding=[0, 20, 0, 0])
+        day_labels = BoxLayout(orientation='vertical', size_hint_x=None, width=dp(30), spacing=dp(4), padding=[0, dp(20), 0, 0])
         
         days_map = {1: "Mon", 3: "Wed", 5: "Fri"}
         for i in range(7):
             txt = days_map.get(i, "")
             # Height must match cell height (12) to stay in sync with grid pitch (12+4=16)
-            lbl = Label(text=txt, font_size='10sp', color=(0.5,0.5,0.5,1), size_hint_y=None, height=12) 
+            lbl = Label(text=txt, font_size='10sp', color=(0.5,0.5,0.5,1), size_hint_y=None, height=dp(12)) 
             day_labels.add_widget(lbl)
             
         heatmap.add_widget(day_labels)
         
         # --- Right Column: Months + Grid ---
-        right_col = BoxLayout(orientation='vertical', size_hint_x=None, spacing=5)
+        right_col = BoxLayout(orientation='vertical', size_hint_x=None, spacing=dp(5))
         # This column width will grow as we add weeks.
         
         # Top: Month Labels
@@ -313,7 +314,7 @@ class HomeDashboard(Screen):
         # matching the week columns.
         
         # Grid Container
-        grid_box = BoxLayout(orientation='horizontal', spacing=4, size_hint_x=None)
+        grid_box = BoxLayout(orientation='horizontal', spacing=dp(4), size_hint_x=None)
         
         # Use Dynamic Year
         current_year = self.heatmap_year
@@ -338,7 +339,7 @@ class HomeDashboard(Screen):
         # Easier: Iterate days and pack into columns.
         
         # Initialize first week column
-        current_week_col = BoxLayout(orientation='vertical', spacing=4, size_hint_x=None, width=16)
+        current_week_col = BoxLayout(orientation='vertical', spacing=dp(4), size_hint_x=None, width=dp(16))
         
         # Pad beginning of first week if Jan 1 is not Sunday
         for _ in range(jan1_weekday_idx):
@@ -371,9 +372,9 @@ class HomeDashboard(Screen):
                             empty.opacity = 0
                             current_week_col.add_widget(empty)
                         grid_box.add_widget(current_week_col)
-                        current_x_pos += 20 # 16 width + 4 spacing
+                        current_x_pos += dp(20) # 16 width + 4 spacing
                         # Reset for new column
-                        current_week_col = BoxLayout(orientation='vertical', spacing=4, size_hint_x=None, width=16)
+                        current_week_col = BoxLayout(orientation='vertical', spacing=dp(4), size_hint_x=None, width=dp(16))
                         day_in_week_count = 0
                     
                     # Store Label for Previous Month (centered)
@@ -382,8 +383,8 @@ class HomeDashboard(Screen):
                     month_labels.append((last_month, center_x))
 
                     # 2. Add Gap (Spacer)
-                    grid_box.add_widget(BoxLayout(size_hint_x=None, width=8)) # Gap
-                    current_x_pos += 12 # 8 width + 4 spacing
+                    grid_box.add_widget(BoxLayout(size_hint_x=None, width=dp(8))) # Gap
+                    current_x_pos += dp(12) # 8 width + 4 spacing
                     
                     month_start_x = current_x_pos # Start of new month
                 
@@ -424,8 +425,8 @@ class HomeDashboard(Screen):
             # If week full (7 days), push column and start new
             if day_in_week_count == 7:
                 grid_box.add_widget(current_week_col)
-                current_x_pos += 20 # 16 + 4
-                current_week_col = BoxLayout(orientation='vertical', spacing=4, size_hint_x=None, width=16)
+                current_x_pos += dp(20) # 16 + 4
+                current_week_col = BoxLayout(orientation='vertical', spacing=dp(4), size_hint_x=None, width=dp(16))
                 day_in_week_count = 0
             
             current += timedelta(days=1)
@@ -437,7 +438,7 @@ class HomeDashboard(Screen):
                 empty.opacity = 0
                 current_week_col.add_widget(empty)
             grid_box.add_widget(current_week_col)
-            current_x_pos += 20
+            current_x_pos += dp(20)
         
         # Add Label for the Final Month
         if last_month:
@@ -453,7 +454,7 @@ class HomeDashboard(Screen):
         
         # --- Month Labels Layer ---
         from kivy.uix.relativelayout import RelativeLayout
-        header_rel = RelativeLayout(size_hint_x=None, width=total_width, size_hint_y=None, height=20)
+        header_rel = RelativeLayout(size_hint_x=None, width=total_width, size_hint_y=None, height=dp(20))
         
         for m_text, center_x in month_labels:
             # Center the label at center_x
@@ -463,8 +464,8 @@ class HomeDashboard(Screen):
                 font_size='10sp', 
                 color=(0.5,0.5,0.5,1), 
                 size_hint= (None, None),
-                size=(40, 20),
-                pos=(center_x - 20, 0),
+                size=(dp(40), dp(20)),
+                pos=(center_x - dp(20), 0),
                 halign='center', valign='bottom'
             )
             header_rel.add_widget(lbl)
