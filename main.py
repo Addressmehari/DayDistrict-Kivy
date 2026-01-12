@@ -13,8 +13,34 @@ Window.size = (360, 640)
 
 class MainApp(App):
     def build(self):
-        # Load the external KV file
-        return Builder.load_file("diary.kv")
+        try:
+            # Load the external KV file
+            return Builder.load_file("diary.kv")
+        except Exception:
+            import traceback
+            import textwrap
+            error_trace = traceback.format_exc()
+            
+            # Fallback to simple UI to show error
+            from kivy.base import runTouchApp
+            from kivy.uix.label import Label
+            from kivy.uix.scrollview import ScrollView
+            
+            # Try to wrap text for mobile screen
+            wrapped_error = "\n".join(textwrap.wrap(error_trace, width=40))
+            
+            # Create a scrollable label
+            layout = ScrollView()
+            label = Label(text=wrapped_error, 
+                          size_hint_y=None, 
+                          color=(1, 0.2, 0.2, 1),
+                          halign='left', valign='top')
+            label.bind(texture_size=label.setter('size'))
+            # Ensure label width matches parent to wrap text properly
+            label.text_size = (Window.width - 20, None)
+            
+            layout.add_widget(label)
+            return layout
 
     def on_start(self):
         try:
