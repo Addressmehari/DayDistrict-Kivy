@@ -147,7 +147,7 @@ WindowManager:
         color: 
             (1, 1, 1, 1) if root.icon_type == 'center' else (C_ACCENT if root.state == 'down' else C_TEXT_SEC)
         size_hint: (None, None)
-        size: (40, 40)
+        size: ('40dp', '40dp')
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         
         canvas.before:
@@ -155,8 +155,8 @@ WindowManager:
             Color:
                 rgba: C_ACCENT if root.icon_type == 'center' else (0,0,0,0)
             Ellipse:
-                pos: (self.center_x - 28, self.center_y - 28) if root.icon_type == 'center' else (0,0)
-                size: (56, 56) if root.icon_type == 'center' else (0,0)
+                pos: (self.center_x - dp(28), self.center_y - dp(28)) if root.icon_type == 'center' else (0,0)
+                size: (dp(56), dp(56)) if root.icon_type == 'center' else (0,0)
 
 
 <PlaceholderDisplay>:

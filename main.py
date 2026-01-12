@@ -6,10 +6,15 @@ import widgets
 from kivy.clock import Clock
 from notification_service import NotificationService
 
+from kivy.utils import platform
+
 # GitHub Dark Theme Background
 # 0d1117 -> (13/255, 17/255, 23/255, 1) = (0.05, 0.066, 0.09, 1)
 Window.clearcolor = (0.05, 0.066, 0.09, 1)
-Window.size = (360, 640)
+
+# Set window size only for desktop testing
+if platform not in ['android', 'ios']:
+    Window.size = (360, 640)
 
 class MainApp(App):
     def build(self):
