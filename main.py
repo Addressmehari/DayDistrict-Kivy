@@ -48,6 +48,8 @@ class MainApp(App):
             return layout
 
     def on_start(self):
+        # Bind back button for Android
+        Window.bind(on_keyboard=self.hook_keyboard)
         try:
             # Start Notification Service
             self.notification_service = NotificationService()
@@ -57,6 +59,44 @@ class MainApp(App):
             self.notification_service.check_and_notify()
         except Exception as e:
             print(f"Failed to start notification service: {e}")
+
+    def hook_keyboard(self, window, key, *args):
+        # Key 27 is Escape/Back on Android
+        if key == 27:
+            screen_manager = self.root
+            current_screen = screen_manager.current
+            
+            # 1. Level 2 Screens (Detail, Calendar, Editors) -> Go back to Home
+            if current_screen in ['detail', 'calendar', 'question_editor', 'tag_manager']:
+                screen_manager.transition.direction = 'down'
+                screen_manager.current = 'home'
+                return True # Consume event
+            
+            # 2. Level 1 (Home Screen Tabs)
+            if current_screen == 'home':
+                # Access internal ScreenManager
+                home_screen = screen_manager.get_screen('home')
+                internal_manager = home_screen.ids.content_manager
+                current_tab = internal_manager.current
+                
+                # If on internal tabs (Diary, Map, Profile...), go back to Dashboard
+                if current_tab != 'home_tab':
+                    # Manually update Nav bar state if needed, or just switch
+                    # Note: We should ideally update the toggle buttons' state too, 
+                    # but switching screens is the primary action.
+                    # We can find the nav button and trigger it, or just switch content.
+                    
+                    # Switch to Dashboard
+                    home_screen.navigate_to('home_tab')
+                    
+                    # Update Nav Bar Visuals (Hack: Find the home button and trigger down)
+                    # For simplicty, just switching view is enough for UX.
+                    return True
+                
+                # If already on Dashboard, let default happen (Exit/Minimize)
+                return False 
+                
+        return False
 
 if __name__ == "__main__":
     try:
