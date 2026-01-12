@@ -18,8 +18,16 @@ from plyer import filechooser
 from kivy.clock import mainthread
 from kivy.core.audio import SoundLoader
 # Fallback for desktop testing if plyer has issues or for specific behaviors
-import tkinter as tk
-from tkinter import filedialog
+if platform != 'android':
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError:
+        tk = None
+        filedialog = None
+else:
+    tk = None
+    filedialog = None
 import shutil
 # Music Metadata
 try:
